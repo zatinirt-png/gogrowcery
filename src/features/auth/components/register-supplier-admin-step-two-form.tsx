@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -10,8 +10,12 @@ import {
   supplierAdminStepTwoSchema,
   type SupplierAdminStepTwoValues,
 } from "@/features/auth/schema";
+import {
+  SUPPLIER_GUIDED_DRAFT_KEY,
+  supplierGuidedRoutes,
+} from "@/features/auth/supplier-guided-register";
 
-const DRAFT_KEY = "gg_supplier_admin_onboarding_draft";
+const DRAFT_KEY = SUPPLIER_GUIDED_DRAFT_KEY;
 
 type SupplierAdminDraft = {
   step1?: Record<string, unknown>;
@@ -19,7 +23,14 @@ type SupplierAdminDraft = {
   updatedAt?: string;
 };
 
-const languageOptions = ["Indonesia", "Sunda", "Jawa", "Inggris"];
+function Label({ text, required = false }: { text: string; required?: boolean }) {
+  return (
+    <label className="mb-2 block text-sm font-bold text-on-surface">
+      {text}
+      {required ? <span className="ml-1 text-error">*</span> : null}
+    </label>
+  );
+}
 
 export default function RegisterSupplierAdminStepTwoForm() {
   const router = useRouter();
@@ -38,13 +49,11 @@ export default function RegisterSupplierAdminStepTwoForm() {
       tempat_lahir: "",
       tanggal_lahir: "",
       jenis_kelamin: "",
-      status_perkawinan: "",
       no_hp: "",
       alamat_domisili: "",
       desa: "",
       kecamatan: "",
       kabupaten: "",
-      bahasa_komunikasi: [],
     },
   });
 
@@ -61,16 +70,11 @@ export default function RegisterSupplierAdminStepTwoForm() {
       setValue("tempat_lahir", parsed.step2.tempat_lahir ?? "");
       setValue("tanggal_lahir", parsed.step2.tanggal_lahir ?? "");
       setValue("jenis_kelamin", parsed.step2.jenis_kelamin ?? "");
-      setValue("status_perkawinan", parsed.step2.status_perkawinan ?? "");
       setValue("no_hp", parsed.step2.no_hp ?? "");
       setValue("alamat_domisili", parsed.step2.alamat_domisili ?? "");
       setValue("desa", parsed.step2.desa ?? "");
       setValue("kecamatan", parsed.step2.kecamatan ?? "");
       setValue("kabupaten", parsed.step2.kabupaten ?? "");
-      setValue(
-        "bahasa_komunikasi",
-        parsed.step2.bahasa_komunikasi ?? []
-      );
     } catch {
       // ignore malformed draft
     }
@@ -81,313 +85,194 @@ export default function RegisterSupplierAdminStepTwoForm() {
 
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        parsed = JSON.parse(raw) as SupplierAdminDraft;
-      }
+      if (raw) parsed = JSON.parse(raw) as SupplierAdminDraft;
     } catch {
       parsed = {};
     }
 
-    const nextDraft: SupplierAdminDraft = {
-      ...parsed,
-      step2: values,
-      updatedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(nextDraft));
-  };
-
-  const handleSaveAndExit = () => {
-    saveDraft(getValues());
-    toast.success("Draft step 2 berhasil disimpan.");
-    router.push("/register/supplier");
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        ...parsed,
+        step2: values,
+        updatedAt: new Date().toISOString(),
+      })
+    );
   };
 
   const handleBack = () => {
     saveDraft(getValues());
-    router.push("/register/supplier/admin");
+    router.push(supplierGuidedRoutes.start);
   };
 
   const onSubmit = async (values: SupplierAdminStepTwoValues) => {
     saveDraft(values);
-    toast.success("Step 2 saved. Lanjut ke Step 3.");
-    router.push("/register/supplier/admin/step-3");
+    toast.success("Data diri tersimpan.");
+    router.push(supplierGuidedRoutes.step3);
   };
 
   return (
-    <div className="mb-8 rounded-xl bg-surface-container-lowest p-8 shadow-[0_4px_24px_rgba(25,28,30,0.04)]">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
-        <section>
-          <div className="mb-6 flex items-center gap-3">
-            <span className="h-8 w-1 rounded-full bg-primary" />
-            <h3 className="font-headline text-xl font-bold text-on-surface">
-              Identity Information
-            </h3>
-          </div>
+    <div className="rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm md:p-8">
+      <div className="mb-8 rounded-2xl bg-surface-container-low p-4 text-sm leading-7 text-on-surface-variant">
+        Kolom dengan tanda <span className="font-bold text-error">*</span> wajib diisi.
+      </div>
 
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-on-surface-variant">
-                Full Name (as per ID)
-              </label>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <section>
+          <h2 className="mb-5 font-headline text-2xl font-bold text-on-surface">
+            Identitas utama
+          </h2>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <Label text="Nama lengkap sesuai identitas" required />
               <input
                 type="text"
-                placeholder="e.g. Budi Santoso"
+                placeholder="Contoh: Budi Santoso"
                 {...register("nama_lengkap")}
-                className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
-              {errors.nama_lengkap && (
-                <p className="text-sm font-medium text-error">
-                  {errors.nama_lengkap.message}
-                </p>
-              )}
+              {errors.nama_lengkap && <p className="mt-2 text-sm font-medium text-error">{errors.nama_lengkap.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-on-surface-variant">
-                National ID Number (NIK)
-              </label>
+            <div>
+              <Label text="Nomor KTP / NIK" required />
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="16-digit identification number"
+                placeholder="16 digit nomor identitas"
                 {...register("no_ktp")}
-                className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
-              {errors.no_ktp && (
-                <p className="text-sm font-medium text-error">
-                  {errors.no_ktp.message}
-                </p>
-              )}
+              {errors.no_ktp && <p className="mt-2 text-sm font-medium text-error">{errors.no_ktp.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-on-surface-variant">
-                Birth Place &amp; Date
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  placeholder="City"
-                  {...register("tempat_lahir")}
-                  className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                />
-                <input
-                  type="date"
-                  {...register("tanggal_lahir")}
-                  className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                />
-              </div>
-              {(errors.tempat_lahir || errors.tanggal_lahir) && (
-                <p className="text-sm font-medium text-error">
-                  {errors.tempat_lahir?.message || errors.tanggal_lahir?.message}
-                </p>
-              )}
+            <div>
+              <Label text="Tempat lahir" required />
+              <input
+                type="text"
+                placeholder="Contoh: Bandung"
+                {...register("tempat_lahir")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.tempat_lahir && <p className="mt-2 text-sm font-medium text-error">{errors.tempat_lahir.message}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-on-surface-variant">
-                  Gender
-                </label>
-                <select
-                  {...register("jenis_kelamin")}
-                  className="w-full appearance-none rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                >
-                  <option value="">Select</option>
-                  <option value="laki_laki">Laki-laki</option>
-                  <option value="perempuan">Perempuan</option>
-                </select>
-                {errors.jenis_kelamin && (
-                  <p className="text-sm font-medium text-error">
-                    {errors.jenis_kelamin.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-on-surface-variant">
-                  Marital Status
-                </label>
-                <select
-                  {...register("status_perkawinan")}
-                  className="w-full appearance-none rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                >
-                  <option value="">Select</option>
-                  <option value="belum_kawin">Belum Kawin</option>
-                  <option value="kawin">Kawin</option>
-                  <option value="cerai_hidup">Cerai Hidup</option>
-                  <option value="cerai_mati">Cerai Mati</option>
-                </select>
-                {errors.status_perkawinan && (
-                  <p className="text-sm font-medium text-error">
-                    {errors.status_perkawinan.message}
-                  </p>
-                )}
-              </div>
+            <div>
+              <Label text="Tanggal lahir" required />
+              <input
+                type="date"
+                {...register("tanggal_lahir")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.tanggal_lahir && <p className="mt-2 text-sm font-medium text-error">{errors.tanggal_lahir.message}</p>}
             </div>
-          </div>
-        </section>
 
-        <section>
-          <div className="mb-6 flex items-center gap-3">
-            <span className="h-8 w-1 rounded-full bg-primary" />
-            <h3 className="font-headline text-xl font-bold text-on-surface">
-              Contact &amp; Domicile
-            </h3>
-          </div>
+            <div>
+              <Label text="Jenis kelamin" required />
+              <select
+                {...register("jenis_kelamin")}
+                className="w-full appearance-none rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Pilih jenis kelamin</option>
+                <option value="laki_laki">Laki-laki</option>
+                <option value="perempuan">Perempuan</option>
+              </select>
+              {errors.jenis_kelamin && <p className="mt-2 text-sm font-medium text-error">{errors.jenis_kelamin.message}</p>}
+            </div>
 
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            <div className="space-y-2 md:col-span-1">
-              <label className="block text-sm font-bold text-on-surface-variant">
-                Phone Number
-              </label>
+            <div>
+              <Label text="Nomor HP aktif" required />
               <input
                 type="tel"
-                placeholder="08123456789"
+                placeholder="Contoh: 081234567890"
                 {...register("no_hp")}
-                className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
-              {errors.no_hp && (
-                <p className="text-sm font-medium text-error">
-                  {errors.no_hp.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8 space-y-2">
-            <label className="block text-sm font-bold text-on-surface-variant">
-              Domicile Address
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Full residential address..."
-              {...register("alamat_domisili")}
-              className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-            />
-            {errors.alamat_domisili && (
-              <p className="text-sm font-medium text-error">
-                {errors.alamat_domisili.message}
-              </p>
-            )}
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="Village"
-                {...register("desa")}
-                className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-              />
-              {errors.desa && (
-                <p className="text-sm font-medium text-error">
-                  {errors.desa.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="District"
-                {...register("kecamatan")}
-                className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-              />
-              {errors.kecamatan && (
-                <p className="text-sm font-medium text-error">
-                  {errors.kecamatan.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="Regency"
-                {...register("kabupaten")}
-                className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 text-on-surface outline-none transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-              />
-              {errors.kabupaten && (
-                <p className="text-sm font-medium text-error">
-                  {errors.kabupaten.message}
-                </p>
-              )}
+              {errors.no_hp && <p className="mt-2 text-sm font-medium text-error">{errors.no_hp.message}</p>}
             </div>
           </div>
         </section>
 
         <section>
-          <div className="mb-6 flex items-center gap-3">
-            <span className="h-8 w-1 rounded-full bg-primary" />
-            <h3 className="font-headline text-xl font-bold text-on-surface">
-              Communication Languages
-            </h3>
-          </div>
+          <h2 className="mb-5 font-headline text-2xl font-bold text-on-surface">
+            Alamat domisili
+          </h2>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {languageOptions.map((language) => (
-              <label
-                key={language}
-                className="flex cursor-pointer items-center gap-3 rounded-xl bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high"
-              >
-                <input
-                  type="checkbox"
-                  value={language}
-                  {...register("bahasa_komunikasi")}
-                  className="h-5 w-5 rounded border-none text-primary focus:ring-primary-fixed-dim"
-                />
-                <span className="text-sm font-medium text-on-surface">
-                  {language}
-                </span>
-              </label>
-            ))}
-          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Label text="Alamat domisili lengkap" required />
+              <textarea
+                rows={4}
+                placeholder="Tuliskan alamat domisili dengan jelas"
+                {...register("alamat_domisili")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.alamat_domisili && <p className="mt-2 text-sm font-medium text-error">{errors.alamat_domisili.message}</p>}
+            </div>
 
-          {errors.bahasa_komunikasi && (
-            <p className="mt-3 text-sm font-medium text-error">
-              {errors.bahasa_komunikasi.message}
-            </p>
-          )}
+            <div>
+              <Label text="Desa / Kelurahan" required />
+              <input
+                type="text"
+                placeholder="Contoh: Sukamaju"
+                {...register("desa")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.desa && <p className="mt-2 text-sm font-medium text-error">{errors.desa.message}</p>}
+            </div>
+
+            <div>
+              <Label text="Kecamatan" required />
+              <input
+                type="text"
+                placeholder="Contoh: Antapani"
+                {...register("kecamatan")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.kecamatan && <p className="mt-2 text-sm font-medium text-error">{errors.kecamatan.message}</p>}
+            </div>
+
+            <div className="md:col-span-2">
+              <Label text="Kabupaten / Kota" required />
+              <input
+                type="text"
+                placeholder="Contoh: Kota Bandung"
+                {...register("kabupaten")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.kabupaten && <p className="mt-2 text-sm font-medium text-error">{errors.kabupaten.message}</p>}
+            </div>
+          </div>
         </section>
 
-        <div className="flex items-center justify-between border-t border-surface-container-high pt-8">
+        <div className="flex flex-col gap-4 border-t border-outline-variant/15 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={handleBack}
-            className="rounded-xl px-8 py-3 font-bold text-secondary transition-all hover:bg-surface-container-high active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-6 py-3.5 font-bold text-on-surface transition hover:bg-surface-container-high"
           >
-            Back to Step 1
+            <ArrowLeft className="h-4 w-4" />
+            Kembali
           </button>
 
-          <div className="flex gap-4">
-            <button
-              type="button"
-              onClick={handleSaveAndExit}
-              className="hidden rounded-xl bg-secondary-container/50 px-8 py-3 font-bold text-on-secondary-container transition-all hover:bg-secondary-container active:scale-95 md:block"
-            >
-              Save &amp; Exit
-            </button>
-
-            <button
+          <button
             type="submit"
             disabled={isSubmitting}
-            className="signature-gradient flex items-center gap-2 rounded-xl px-10 py-3 font-bold text-white shadow-lg shadow-primary/20 transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  Next Step: Land Records
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </div>
+            className="signature-gradient inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Menyimpan...
+              </>
+            ) : (
+              <>
+                Lanjut ke data lahan
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
+          </button>
         </div>
       </form>
     </div>

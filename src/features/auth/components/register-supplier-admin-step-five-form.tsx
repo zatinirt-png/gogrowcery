@@ -4,21 +4,25 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   BadgeCheck,
   Banknote,
   CheckCircle2,
-  FileCheck2,
   Loader2,
   Map,
   PencilLine,
   Send,
-  ShieldCheck,
+  Smartphone,
   UserCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { registerSupplier } from "@/features/auth/api";
+import {
+  SUPPLIER_GUIDED_DRAFT_KEY,
+  supplierGuidedRoutes,
+} from "@/features/auth/supplier-guided-register";
 
-const DRAFT_KEY = "gg_supplier_admin_onboarding_draft";
+const DRAFT_KEY = SUPPLIER_GUIDED_DRAFT_KEY;
 
 type Step1Draft = {
   name?: string;
@@ -66,6 +70,9 @@ type Step4Draft = {
   bank_name?: string;
   bank_account_number?: string;
   bank_account_name?: string;
+  ewallet_name?: string;
+  ewallet_account_number?: string;
+  ewallet_account_name?: string;
 };
 
 type SupplierAdminDraft = {
@@ -76,34 +83,28 @@ type SupplierAdminDraft = {
   updatedAt?: string;
 };
 
-function maskAccountNumber(value?: string) {
+function maskValue(value?: string) {
   if (!value) return "-";
   if (value.length <= 4) return value;
-  return `**** ${value.slice(-4)}`;
-}
-
-function formatOwnership(value?: string) {
-  if (!value) return "-";
-  switch (value) {
-    case "milik_sendiri":
-      return "Milik Sendiri";
-    case "sewa":
-      return "Sewa";
-    case "kerjasama":
-      return "Kerjasama";
-    default:
-      return value;
-  }
+  return `•••• ${value.slice(-4)}`;
 }
 
 function formatPayoutMethod(value?: string) {
   if (!value) return "-";
-  return value === "ewallet" ? "E-wallet" : "Bank Transfer";
+  return value === "ewallet" ? "E-wallet" : "Transfer bank";
+}
+
+function ReviewItem({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{label}</p>
+      <p className="mt-2 text-sm font-semibold leading-7 text-on-surface">{value || "-"}</p>
+    </div>
+  );
 }
 
 export default function RegisterSupplierAdminStepFiveForm() {
   const router = useRouter();
-
   const [draft, setDraft] = useState<SupplierAdminDraft | null>(null);
   const [agreeAccuracy, setAgreeAccuracy] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -138,18 +139,14 @@ export default function RegisterSupplierAdminStepFiveForm() {
       draft?.step4?.payout_method
   );
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleSubmit = async () => {
     if (!draft?.step1 || !draft?.step2 || !draft?.step3 || !draft?.step4) {
-      toast.error("Draft onboarding belum lengkap.");
+      toast.error("Draft registrasi belum lengkap.");
       return;
     }
 
     if (!agreeAccuracy || !agreeTerms) {
-      toast.error("Semua deklarasi wajib disetujui.");
+      toast.error("Silakan centang seluruh persetujuan sebelum mengirim data.");
       return;
     }
 
@@ -163,38 +160,48 @@ export default function RegisterSupplierAdminStepFiveForm() {
         password: draft.step1.password || "",
         password_confirmation: draft.step1.password_confirmation || "",
 
-        nama_lengkap: draft.step2.nama_lengkap || "",
-        no_ktp: draft.step2.no_ktp || "",
-        tempat_lahir: draft.step2.tempat_lahir || "",
-        tanggal_lahir: draft.step2.tanggal_lahir || "",
-        jenis_kelamin: draft.step2.jenis_kelamin || "",
-        status_perkawinan: draft.step2.status_perkawinan || "",
-        no_hp: draft.step2.no_hp || "",
-        alamat_domisili: draft.step2.alamat_domisili || "",
-        desa: draft.step2.desa || "",
-        kecamatan: draft.step2.kecamatan || "",
-        kabupaten: draft.step2.kabupaten || "",
-        bahasa_komunikasi: draft.step2.bahasa_komunikasi || [],
+        nama_lengkap: draft.step2.nama_lengkap || undefined,
+        no_ktp: draft.step2.no_ktp || undefined,
+        tempat_lahir: draft.step2.tempat_lahir || undefined,
+        tanggal_lahir: draft.step2.tanggal_lahir || undefined,
+        jenis_kelamin: draft.step2.jenis_kelamin || undefined,
+        status_perkawinan: draft.step2.status_perkawinan || undefined,
+        no_hp: draft.step2.no_hp || undefined,
+        alamat_domisili: draft.step2.alamat_domisili || undefined,
+        desa: draft.step2.desa || undefined,
+        kecamatan: draft.step2.kecamatan || undefined,
+        kabupaten: draft.step2.kabupaten || undefined,
+        bahasa_komunikasi:
+          draft.step2.bahasa_komunikasi && draft.step2.bahasa_komunikasi.length > 0
+            ? draft.step2.bahasa_komunikasi
+            : undefined,
 
         lands: draft.step3.lands || [],
 
-        payout: {
-          payout_method: draft.step4.payout_method || "",
-          bank_name: draft.step4.bank_name || "",
-          bank_account_number: draft.step4.bank_account_number || "",
-          bank_account_name: draft.step4.bank_account_name || "",
-        },
+        payout:
+          draft.step4.payout_method === "ewallet"
+            ? {
+                payout_method: "ewallet",
+                ewallet_name: draft.step4.ewallet_name || "",
+                ewallet_account_number:
+                  draft.step4.ewallet_account_number || "",
+                ewallet_account_name: draft.step4.ewallet_account_name || "",
+              }
+            : {
+                payout_method: "transfer",
+                bank_name: draft.step4.bank_name || "",
+                bank_account_number: draft.step4.bank_account_number || "",
+                bank_account_name: draft.step4.bank_account_name || "",
+              },
       });
 
       localStorage.removeItem(DRAFT_KEY);
-      toast.success("Supplier berhasil didaftarkan.");
-      router.push("/register/supplier/admin/complete");
+      toast.success("Registrasi supplier berhasil dikirim.");
+      router.push(supplierGuidedRoutes.complete);
       router.refresh();
     } catch (error: unknown) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Gagal submit aplikasi supplier.";
+        error instanceof Error ? error.message : "Gagal mengirim registrasi supplier.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -204,362 +211,191 @@ export default function RegisterSupplierAdminStepFiveForm() {
   return (
     <>
       {!isDraftComplete && (
-        <div className="mb-6 rounded-xl border border-error/15 bg-error-container px-4 py-3 text-sm font-medium text-on-error-container">
-          Draft onboarding belum lengkap. Pastikan Step 1 sampai Step 4 sudah
-          diisi sebelum submit.
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-error/15 bg-error-container px-4 py-3 text-sm font-medium text-on-error-container">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Data registrasi belum lengkap. Pastikan langkah 1 sampai langkah 4 sudah terisi.
+          </span>
         </div>
       )}
 
-      <div className="mb-12 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-6 transition-all hover:shadow-sm">
-          <div className="mb-6 flex items-start justify-between">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-container-low">
-                <UserCircle2 className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="font-headline font-bold text-on-surface">
-                Account Setup
-              </h3>
+              <UserCircle2 className="h-5 w-5 text-primary" />
+              <h3 className="font-headline text-xl font-bold text-on-surface">Data akun</h3>
             </div>
-
-            <Link
-              href="/register/supplier/admin"
-              className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-            >
+            <Link href={supplierGuidedRoutes.start} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
               <PencilLine className="h-4 w-4" />
-              Edit
+              Ubah
             </Link>
           </div>
-
           <div className="space-y-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Name
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step1?.name || "-"}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Username
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step1?.username || "-"}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Email Address
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step1?.email || "-"}
-              </span>
-            </div>
+            <ReviewItem label="Nama akun" value={draft?.step1?.name} />
+            <ReviewItem label="Username" value={draft?.step1?.username} />
+            <ReviewItem label="Email" value={draft?.step1?.email || "Tidak diisi"} />
           </div>
-        </div>
+        </section>
 
-        <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-6 transition-all hover:shadow-sm">
-          <div className="mb-6 flex items-start justify-between">
+        <section className="rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-container-low">
-                <BadgeCheck className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="font-headline font-bold text-on-surface">
-                Personal Details
-              </h3>
+              <BadgeCheck className="h-5 w-5 text-primary" />
+              <h3 className="font-headline text-xl font-bold text-on-surface">Data diri</h3>
             </div>
-
-            <Link
-              href="/register/supplier/admin/step-2"
-              className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-            >
+            <Link href={supplierGuidedRoutes.step2} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
               <PencilLine className="h-4 w-4" />
-              Edit
+              Ubah
             </Link>
           </div>
-
           <div className="space-y-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Primary Contact
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step2?.nama_lengkap || "-"}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Phone Number
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step2?.no_hp || "-"}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Mailing Address
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step2?.alamat_domisili || "-"}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Communication Languages
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step2?.bahasa_komunikasi?.join(", ") || "-"}
-              </span>
-            </div>
+            <ReviewItem label="Nama lengkap" value={draft?.step2?.nama_lengkap} />
+            <ReviewItem label="NIK" value={draft?.step2?.no_ktp} />
+            <ReviewItem label="Tempat lahir" value={draft?.step2?.tempat_lahir} />
+            <ReviewItem label="Tanggal lahir" value={draft?.step2?.tanggal_lahir} />
+            <ReviewItem label="Jenis kelamin" value={draft?.step2?.jenis_kelamin === "laki_laki" ? "Laki-laki" : draft?.step2?.jenis_kelamin === "perempuan" ? "Perempuan" : "-"} />
+            <ReviewItem label="Nomor HP" value={draft?.step2?.no_hp} />
+            <ReviewItem label="Alamat domisili" value={draft?.step2?.alamat_domisili} />
+            <ReviewItem label="Desa / Kelurahan" value={draft?.step2?.desa} />
+            <ReviewItem label="Kecamatan" value={draft?.step2?.kecamatan} />
+            <ReviewItem label="Kabupaten / Kota" value={draft?.step2?.kabupaten} />
           </div>
-        </div>
+        </section>
 
-        <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-6 transition-all hover:shadow-sm lg:col-span-2">
-          <div className="mb-8 flex items-start justify-between">
+        <section className="rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm lg:col-span-2">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-container-low">
-                <Map className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-headline font-bold text-on-surface">
-                  Land Records &amp; Assets
-                </h3>
-                <p className="text-xs text-on-surface-variant">
-                  {totalLands} parcels registered
-                </p>
-              </div>
+              <Map className="h-5 w-5 text-primary" />
+              <h3 className="font-headline text-xl font-bold text-on-surface">Data lahan</h3>
             </div>
-
-            <Link
-              href="/register/supplier/admin/step-3"
-              className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-            >
+            <Link href={supplierGuidedRoutes.step3} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
               <PencilLine className="h-4 w-4" />
-              Edit
+              Ubah
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="rounded-lg bg-surface-container-low p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Total Cultivable Area
-              </p>
-              <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">
-                {totalArea.toLocaleString("id-ID")} m²
-              </p>
+          <div className="mb-6 grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl bg-surface-container-low p-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Total lahan</p>
+              <p className="mt-2 text-2xl font-extrabold text-on-surface">{totalLands}</p>
             </div>
-
-            <div className="rounded-lg bg-surface-container-low p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Active Parcels
-              </p>
-              <p className="mt-2 font-headline text-3xl font-extrabold text-on-surface">
-                {
-                  (draft?.step3?.lands || []).filter(
-                    (land) => land.status_aktif === "aktif"
-                  ).length
-                }
-              </p>
+            <div className="rounded-2xl bg-surface-container-low p-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Total luas</p>
+              <p className="mt-2 text-2xl font-extrabold text-on-surface">{totalArea} m²</p>
             </div>
-
-            <div className="rounded-lg bg-surface-container-low p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Ownership Overview
-              </p>
-              <p className="mt-2 font-medium text-on-surface">
-                {(draft?.step3?.lands || [])
-                  .map((land) => formatOwnership(land.kepemilikan))
-                  .join(", ") || "-"}
-              </p>
+            <div className="rounded-2xl bg-surface-container-low p-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Status</p>
+              <p className="mt-2 text-2xl font-extrabold text-primary">Siap ditinjau</p>
             </div>
           </div>
 
-          <div className="mt-6 space-y-4">
-            {(draft?.step3?.lands || []).map((land, index) => (
-              <div
-                key={`${land.nama_lahan || "land"}-${index}`}
-                className="rounded-lg border border-outline-variant/10 bg-surface-container-low p-4"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-bold text-on-surface">
-                      {land.nama_lahan || `Land Parcel #${index + 1}`}
-                    </p>
-                    <p className="text-sm text-on-surface-variant">
-                      {land.alamat_lahan || "-"}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-on-surface">
-                      {(land.luas_lahan_m2 || 0).toLocaleString("id-ID")} m²
-                    </p>
-                    <p className="text-xs uppercase tracking-wider text-primary">
-                      {land.status_aktif || "-"}
-                    </p>
-                  </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {draft?.step3?.lands?.map((land, index) => (
+              <article key={`${land.nama_lahan || "land"}-${index}`} className="rounded-2xl bg-surface-container-low p-5">
+                <p className="text-sm font-bold text-on-surface">Lahan {index + 1}</p>
+                <div className="mt-4 space-y-3">
+                  <ReviewItem label="Pemilik / pengelola" value={land.nama_pemilik} />
+                  <ReviewItem label="Nomor HP" value={land.no_hp} />
+                  <ReviewItem label="Alamat lahan" value={land.alamat_lahan} />
+                  <ReviewItem label="Desa / Kelurahan" value={land.desa} />
+                  <ReviewItem label="Kecamatan" value={land.kecamatan} />
+                  <ReviewItem label="Kabupaten / Kota" value={land.kabupaten} />
+                  <ReviewItem label="Provinsi" value={land.provinsi} />
+                  <ReviewItem label="Kepemilikan" value={land.kepemilikan} />
+                  <ReviewItem label="Luas lahan" value={land.luas_lahan_m2 ? `${land.luas_lahan_m2} m²` : "-"} />
+                  <ReviewItem label="Status" value={land.status_aktif} />
                 </div>
-              </div>
+              </article>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-6 transition-all hover:shadow-sm lg:col-span-2">
-          <div className="mb-6 flex items-start justify-between">
+        <section className="rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm lg:col-span-2">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-container-low">
+              {draft?.step4?.payout_method === "ewallet" ? (
+                <Smartphone className="h-5 w-5 text-primary" />
+              ) : (
                 <Banknote className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="font-headline font-bold text-on-surface">
-                Payout &amp; Financials
-              </h3>
+              )}
+              <h3 className="font-headline text-xl font-bold text-on-surface">Data pencairan</h3>
             </div>
-
-            <Link
-              href="/register/supplier/admin/step-4"
-              className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-            >
+            <Link href={supplierGuidedRoutes.step4} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
               <PencilLine className="h-4 w-4" />
-              Edit
+              Ubah
             </Link>
           </div>
 
-          <div className="flex flex-wrap gap-12">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Payout Method
-              </span>
-              <span className="font-medium text-on-surface">
-                {formatPayoutMethod(draft?.step4?.payout_method)}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Primary Account
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step4?.bank_name || "-"} (
-                {maskAccountNumber(draft?.step4?.bank_account_number)})
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                Account Holder
-              </span>
-              <span className="font-medium text-on-surface">
-                {draft?.step4?.bank_account_name || "-"}
-              </span>
-            </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <ReviewItem label="Metode pencairan" value={formatPayoutMethod(draft?.step4?.payout_method)} />
+            {draft?.step4?.payout_method === "ewallet" ? (
+              <>
+                <ReviewItem label="Nama e-wallet" value={draft?.step4?.ewallet_name} />
+                <ReviewItem label="Nama pemilik akun" value={draft?.step4?.ewallet_account_name} />
+                <ReviewItem label="Nomor e-wallet" value={maskValue(draft?.step4?.ewallet_account_number)} />
+              </>
+            ) : (
+              <>
+                <ReviewItem label="Nama bank" value={draft?.step4?.bank_name} />
+                <ReviewItem label="Nama pemilik rekening" value={draft?.step4?.bank_account_name} />
+                <ReviewItem label="Nomor rekening" value={maskValue(draft?.step4?.bank_account_number)} />
+              </>
+            )}
           </div>
-        </div>
+        </section>
       </div>
 
-      <div className="mb-20 rounded-xl bg-surface-container-low p-8">
-        <h4 className="mb-4 font-headline font-bold text-on-surface">
-          Declarations &amp; Agreements
-        </h4>
-
-        <div className="mb-8 space-y-4">
-          <label className="flex cursor-pointer items-start gap-4">
-            <div className="mt-1">
-              <input
-                type="checkbox"
-                checked={agreeAccuracy}
-                onChange={(e) => setAgreeAccuracy(e.target.checked)}
-                className="h-5 w-5 rounded border-outline-variant text-primary focus:ring-primary/20"
-              />
-            </div>
-            <span className="text-sm leading-relaxed text-on-surface-variant">
-              I certify that all information provided is accurate to the best of
-              my knowledge and that I have the legal authority to represent the
-              listed supplier entity.
-            </span>
+      <div className="mt-6 rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
+        <div className="space-y-3">
+          <label className="flex items-start gap-3 text-sm leading-7 text-on-surface-variant">
+            <input
+              type="checkbox"
+              checked={agreeAccuracy}
+              onChange={(event) => setAgreeAccuracy(event.target.checked)}
+              className="mt-1 h-4 w-4"
+            />
+            <span>Saya menyatakan data yang diisi sudah benar dan sesuai kondisi saat ini.</span>
           </label>
 
-          <label className="flex cursor-pointer items-start gap-4">
-            <div className="mt-1">
-              <input
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="h-5 w-5 rounded border-outline-variant text-primary focus:ring-primary/20"
-              />
-            </div>
-            <span className="text-sm leading-relaxed text-on-surface-variant">
-              I have read and agree to{" "}
-              <span className="font-semibold text-primary underline">
-                The Precision Harvest Supplier Terms &amp; Conditions
-              </span>{" "}
-              and{" "}
-              <span className="font-semibold text-primary underline">
-                Quality Standards Protocol
-              </span>
-              .
-            </span>
+          <label className="flex items-start gap-3 text-sm leading-7 text-on-surface-variant">
+            <input
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(event) => setAgreeTerms(event.target.checked)}
+              className="mt-1 h-4 w-4"
+            />
+            <span>Saya setuju untuk melanjutkan proses registrasi supplier.</span>
           </label>
         </div>
 
-        <div className="flex flex-col items-center justify-between gap-6 border-t border-outline-variant/20 pt-6 md:flex-row">
-          <div className="flex items-center gap-3 text-on-surface-variant">
-            <ShieldCheck className="h-5 w-5 text-secondary" />
-            <p className="max-w-xs text-xs">
-              Your data is encrypted and protected before the final supplier
-              payload is submitted.
-            </p>
-          </div>
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Link
+            href={supplierGuidedRoutes.step4}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-6 py-3.5 font-bold text-on-surface transition hover:bg-surface-container-high"
+          >
+            <PencilLine className="h-4 w-4" />
+            Kembali ke langkah sebelumnya
+          </Link>
 
-          <div className="flex w-full items-center gap-4 md:w-auto">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="flex-1 rounded-xl border border-outline px-8 py-3 font-bold text-on-surface transition-colors hover:bg-surface-container-high md:flex-none"
-            >
-              Print Summary
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !isDraftComplete}
-              className="signature-gradient flex flex-1 items-center justify-center gap-2 rounded-xl px-12 py-3 font-bold text-white shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 md:flex-none"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  Submit Application
-                  <Send className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-primary/10 bg-primary/5 p-6">
-        <div className="flex items-start gap-4">
-          <FileCheck2 className="mt-1 h-5 w-5 text-primary" />
-          <div>
-            <h4 className="font-headline text-sm font-bold text-on-surface">
-              Final payload assembly
-            </h4>
-            <p className="mt-2 text-xs leading-7 text-on-surface-variant">
-              Step 5 now assembles draft data from Account Setup, Personal
-              Details, Land Records, and Payout Info into the final supplier
-              registration request.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting || !isDraftComplete}
+            className="signature-gradient inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Mengirim...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                Kirim registrasi
+              </>
+            )}
+          </button>
         </div>
       </div>
     </>

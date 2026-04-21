@@ -55,14 +55,15 @@ export default function RegisterSupplierPathOptions() {
 
         <p className="mt-4 min-h-[4rem] leading-relaxed text-on-surface-variant">
           Gunakan flow bertahap untuk melengkapi account setup, personal
-          details, land records, payout info, dan final review.
+          details, land records, payout info, dan final review sebagai
+          self-registration supplier.
         </p>
 
         <div className="mt-auto pt-8">
           <div className="space-y-3 text-sm text-on-surface-variant">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              <span>Multi-step supplier onboarding</span>
+              <span>Multi-step supplier self onboarding</span>
             </div>
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-4 w-4 text-primary" />
@@ -71,7 +72,7 @@ export default function RegisterSupplierPathOptions() {
           </div>
 
           <Link
-            href="/register/supplier/admin"
+            href="/register/supplier/guided"
             className="mt-10 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-high px-8 py-4 font-bold text-on-surface transition hover:bg-surface-container-highest"
           >
             Start Guided Registration

@@ -17,6 +17,15 @@ import {
   getValidationErrors,
 } from "@/features/auth/utils";
 
+function Label({ text, required = false }: { text: string; required?: boolean }) {
+  return (
+    <label className="mb-2 block text-sm font-bold text-on-surface">
+      {text}
+      {required ? <span className="ml-1 text-error">*</span> : null}
+    </label>
+  );
+}
+
 export default function RegisterBuyerForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -105,154 +114,108 @@ export default function RegisterBuyerForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div className="rounded-2xl bg-surface-container-low p-4 text-sm leading-7 text-on-surface-variant">
+        Kolom dengan tanda <span className="font-bold text-error">*</span> wajib diisi.
+      </div>
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-            Account Name
-          </label>
+        <div>
+          <Label text="Nama akun" required />
           <input
             type="text"
-            placeholder="Budi Santoso"
+            placeholder="Contoh: Budi Santoso"
             {...register("name")}
-            className="w-full border-0 border-b-2 border-surface-container-highest bg-transparent px-0 py-3 outline-none transition placeholder:text-surface-dim focus:border-primary"
+            className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
-          {errors.name && (
-            <p className="text-sm font-medium text-error">{errors.name.message}</p>
-          )}
+          {errors.name && <p className="mt-2 text-sm font-medium text-error">{errors.name.message}</p>}
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-            Full Name
-          </label>
+        <div>
+          <Label text="Nama lengkap" required />
           <input
             type="text"
-            placeholder="Budi Santoso"
+            placeholder="Contoh: Budi Santoso"
             {...register("full_name")}
-            className="w-full border-0 border-b-2 border-surface-container-highest bg-transparent px-0 py-3 outline-none transition placeholder:text-surface-dim focus:border-primary"
+            className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
-          {errors.full_name && (
-            <p className="text-sm font-medium text-error">
-              {errors.full_name.message}
-            </p>
-          )}
+          {errors.full_name && <p className="mt-2 text-sm font-medium text-error">{errors.full_name.message}</p>}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-            Username
-          </label>
+        <div>
+          <Label text="Username" required />
           <input
             type="text"
-            placeholder="budisantoso"
+            placeholder="Contoh: budisantoso"
             {...register("username")}
-            className="w-full border-0 border-b-2 border-surface-container-highest bg-transparent px-0 py-3 outline-none transition placeholder:text-surface-dim focus:border-primary"
+            className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
-          {errors.username && (
-            <p className="text-sm font-medium text-error">
-              {errors.username.message}
-            </p>
-          )}
+          {errors.username && <p className="mt-2 text-sm font-medium text-error">{errors.username.message}</p>}
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-            Email
-          </label>
+        <div>
+          <Label text="Email" required />
           <input
             type="email"
-            placeholder="budi@gmail.com"
+            placeholder="contoh@email.com"
             {...register("email")}
-            className="w-full border-0 border-b-2 border-surface-container-highest bg-transparent px-0 py-3 outline-none transition placeholder:text-surface-dim focus:border-primary"
+            className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
-          {errors.email && (
-            <p className="text-sm font-medium text-error">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="mt-2 text-sm font-medium text-error">{errors.email.message}</p>}
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-          Phone
-        </label>
+      <div>
+        <Label text="Nomor HP" />
         <input
           type="tel"
           placeholder="08123456789"
           {...register("phone")}
-          className="w-full border-0 border-b-2 border-surface-container-highest bg-transparent px-0 py-3 outline-none transition placeholder:text-surface-dim focus:border-primary"
+          className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.phone && (
-          <p className="text-sm font-medium text-error">{errors.phone.message}</p>
-        )}
+        {errors.phone && <p className="mt-2 text-sm font-medium text-error">{errors.phone.message}</p>}
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-            Password
-          </label>
-
+        <div>
+          <Label text="Kata sandi" required />
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
+              placeholder="Minimal 8 karakter"
               {...register("password")}
-              className="w-full border-0 border-b-2 border-surface-container-highest bg-transparent px-0 py-3 pr-10 outline-none transition placeholder:text-surface-dim focus:border-primary"
+              className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 pr-12 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
-
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-on-surface-variant"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant"
             >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-
-          {errors.password && (
-            <p className="text-sm font-medium text-error">
-              {errors.password.message}
-            </p>
-          )}
+          {errors.password && <p className="mt-2 text-sm font-medium text-error">{errors.password.message}</p>}
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-            Confirm Password
-          </label>
-
+        <div>
+          <Label text="Konfirmasi kata sandi" required />
           <div className="relative">
             <input
               type={showPasswordConfirmation ? "text" : "password"}
-              placeholder="••••••••"
+              placeholder="Ulangi kata sandi"
               {...register("password_confirmation")}
-              className="w-full border-0 border-b-2 border-surface-container-highest bg-transparent px-0 py-3 pr-10 outline-none transition placeholder:text-surface-dim focus:border-primary"
+              className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 pr-12 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
-
             <button
               type="button"
               onClick={() => setShowPasswordConfirmation((prev) => !prev)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-on-surface-variant"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant"
             >
-              {showPasswordConfirmation ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
+              {showPasswordConfirmation ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-
-          {errors.password_confirmation && (
-            <p className="text-sm font-medium text-error">
-              {errors.password_confirmation.message}
-            </p>
-          )}
+          {errors.password_confirmation && <p className="mt-2 text-sm font-medium text-error">{errors.password_confirmation.message}</p>}
         </div>
       </div>
 
@@ -263,21 +226,11 @@ export default function RegisterBuyerForm() {
           className="mt-1 h-5 w-5 rounded-md border-surface-container-highest text-primary focus:ring-primary"
         />
         <span className="text-sm font-medium leading-relaxed text-on-surface-variant">
-          I agree to the{" "}
-          <Link href="#" className="font-bold text-primary hover:underline">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="#" className="font-bold text-primary hover:underline">
-            Privacy Policy
-          </Link>
-          .
+          Saya setuju dengan <Link href="#" className="font-bold text-primary hover:underline">syarat layanan</Link> dan <Link href="#" className="font-bold text-primary hover:underline">kebijakan privasi</Link>.
         </span>
       </label>
 
-      {errors.terms && (
-        <p className="text-sm font-medium text-error">{errors.terms.message}</p>
-      )}
+      {errors.terms && <p className="text-sm font-medium text-error">{errors.terms.message}</p>}
 
       {formError && (
         <div className="rounded-xl border border-error/15 bg-error-container px-4 py-3 text-sm font-medium text-on-error-container">
@@ -285,26 +238,20 @@ export default function RegisterBuyerForm() {
         </div>
       )}
 
-      <div className="space-y-4 pt-4">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="signature-gradient flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-on-primary shadow-lg transition hover:shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Creating Account...
-            </>
-          ) : (
-            "Create Account"
-          )}
-        </button>
-
-        <p className="text-center text-sm font-semibold text-primary/80">
-          Payload buyer sekarang mengikuti acuan Postman production.
-        </p>
-      </div>
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="signature-gradient flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-on-primary shadow-lg transition hover:shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Membuat akun...
+          </>
+        ) : (
+          "Buat akun buyer"
+        )}
+      </button>
     </form>
   );
 }

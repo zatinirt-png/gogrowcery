@@ -1,72 +1,337 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Save, Send, UserPlus, Waypoints } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useFieldArray, useForm } from "react-hook-form";
+import {
+  CircleDollarSign,
+  LandPlot,
+  Loader2,
+  Plus,
+  Save,
+  Send,
+  Trash2,
+  UserPlus,
+  Waypoints,
+} from "lucide-react";
+import { toast } from "sonner";
+import { createAdminSupplier } from "@/features/auth/api";
+import {
+  adminCreateSupplierSchema,
+  type AdminCreateSupplierFormValues,
+} from "@/features/auth/schema";
+import {
+  getAuthErrorMessage,
+  getValidationErrors,
+} from "@/features/auth/utils";
 import AdminShell from "./admin-shell";
 
+const DRAFT_KEY = "admin-supplier-add-draft-v1";
+
+const bahasaOptions = ["Indonesia", "Sunda", "Jawa", "Inggris"];
+
+const jenisKelaminOptions = [
+  { value: "laki_laki", label: "Laki-laki" },
+  { value: "perempuan", label: "Perempuan" },
+];
+
+const statusPerkawinanOptions = [
+  { value: "belum_kawin", label: "Belum Kawin" },
+  { value: "kawin", label: "Kawin" },
+  { value: "cerai_hidup", label: "Cerai Hidup" },
+  { value: "cerai_mati", label: "Cerai Mati" },
+];
+
+const kepemilikanOptions = [
+  { value: "milik_sendiri", label: "Milik Sendiri" },
+  { value: "sewa", label: "Sewa" },
+  { value: "bagi_hasil", label: "Bagi Hasil" },
+  { value: "lainnya", label: "Lainnya" },
+];
+
+const statusAktifOptions = [
+  { value: "aktif", label: "Aktif" },
+  { value: "tidak_aktif", label: "Tidak Aktif" },
+];
+
+const payoutMethodOptions = [
+  { value: "transfer", label: "Bank Transfer" },
+  { value: "ewallet", label: "E-wallet" },
+];
+
+function createDefaultValues(): AdminCreateSupplierFormValues {
+  return {
+    name: "",
+    email: "",
+    nama_lengkap: "",
+    no_ktp: "",
+    tempat_lahir: "",
+    tanggal_lahir: "",
+    jenis_kelamin: "laki_laki",
+    status_perkawinan: "kawin",
+    no_hp: "",
+    alamat_domisili: "",
+    desa: "",
+    kecamatan: "",
+    kabupaten: "",
+    bahasa_komunikasi: ["Indonesia"],
+    lands: [
+      {
+        nama_lahan: "",
+        nama_pemilik: "",
+        no_hp: "",
+        alamat_lahan: "",
+        desa: "",
+        kecamatan: "",
+        kabupaten: "",
+        provinsi: "",
+        kepemilikan: "milik_sendiri",
+        luas_lahan_m2: 0,
+        status_aktif: "aktif",
+      },
+    ],
+    payout: {
+      payout_method: "transfer",
+      bank_name: "",
+      bank_account_number: "",
+      bank_account_name: "",
+      ewallet_name: "",
+      ewallet_account_number: "",
+      ewallet_account_name: "",
+    },
+  };
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-sm font-medium text-error">{message}</p>;
+}
+
 export default function AdminSupplierAddView() {
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    getValues,
+    setError,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AdminCreateSupplierFormValues>({
+    resolver: zodResolver(adminCreateSupplierSchema),
+    defaultValues: createDefaultValues(),
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "lands",
+  });
+
+  const payoutMethod = watch("payout.payout_method");
+  const selectedLanguages = watch("bahasa_komunikasi");
+
+  const sectionLinks = useMemo(
+    () => [
+      { href: "#account-info", label: "Account Info", active: true },
+      { href: "#personal-info", label: "Personal Details", active: false },
+      { href: "#land-info", label: "Land Records", active: false },
+      { href: "#payout-info", label: "Payout Info", active: false },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const rawDraft = window.localStorage.getItem(DRAFT_KEY);
+    if (!rawDraft) return;
+
+    try {
+      const parsed = JSON.parse(rawDraft) as Partial<AdminCreateSupplierFormValues>;
+      const defaults = createDefaultValues();
+
+      reset({
+        ...defaults,
+        ...parsed,
+        bahasa_komunikasi:
+          parsed.bahasa_komunikasi && parsed.bahasa_komunikasi.length > 0
+            ? parsed.bahasa_komunikasi
+            : defaults.bahasa_komunikasi,
+        lands:
+          parsed.lands && parsed.lands.length > 0 ? parsed.lands : defaults.lands,
+        payout: {
+          ...defaults.payout,
+          ...parsed.payout,
+        },
+      });
+
+      toast.success("Draft admin supplier dimuat dari browser.");
+    } catch {
+      window.localStorage.removeItem(DRAFT_KEY);
+    }
+  }, [reset]);
+
+  const handleSaveDraft = () => {
+    if (typeof window === "undefined") return;
+
+    const values = getValues();
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+    toast.success("Draft disimpan di browser.");
+  };
+
+  const applyServerValidationErrors = (validationErrors: Record<string, string>) => {
+    Object.entries(validationErrors).forEach(([field, message]) => {
+      setError(field as never, {
+        type: "server",
+        message,
+      });
+    });
+  };
+
+  const buildPayload = (values: AdminCreateSupplierFormValues) => ({
+    name: values.name.trim(),
+    email: values.email?.trim() ? values.email.trim() : null,
+    nama_lengkap: values.nama_lengkap.trim(),
+    no_ktp: values.no_ktp.trim(),
+    tempat_lahir: values.tempat_lahir.trim(),
+    tanggal_lahir: values.tanggal_lahir,
+    jenis_kelamin: values.jenis_kelamin,
+    status_perkawinan: values.status_perkawinan,
+    no_hp: values.no_hp.trim(),
+    alamat_domisili: values.alamat_domisili.trim(),
+    desa: values.desa.trim(),
+    kecamatan: values.kecamatan.trim(),
+    kabupaten: values.kabupaten.trim(),
+    bahasa_komunikasi: values.bahasa_komunikasi,
+    lands: values.lands.map((land) => ({
+      nama_lahan: land.nama_lahan.trim(),
+      nama_pemilik: land.nama_pemilik.trim(),
+      no_hp: land.no_hp.trim(),
+      alamat_lahan: land.alamat_lahan.trim(),
+      desa: land.desa.trim(),
+      kecamatan: land.kecamatan.trim(),
+      kabupaten: land.kabupaten.trim(),
+      provinsi: land.provinsi.trim(),
+      kepemilikan: land.kepemilikan,
+      luas_lahan_m2: Number(land.luas_lahan_m2),
+      status_aktif: land.status_aktif,
+    })),
+    payout:
+      values.payout.payout_method === "transfer"
+        ? {
+            payout_method: "transfer",
+            bank_name: values.payout.bank_name?.trim() || "",
+            bank_account_number:
+              values.payout.bank_account_number?.trim() || "",
+            bank_account_name:
+              values.payout.bank_account_name?.trim() || "",
+          }
+        : {
+            payout_method: "ewallet",
+            ewallet_name: values.payout.ewallet_name?.trim() || "",
+            ewallet_account_number:
+              values.payout.ewallet_account_number?.trim() || "",
+            ewallet_account_name:
+              values.payout.ewallet_account_name?.trim() || "",
+          },
+  });
+
+  const onSubmit = async (values: AdminCreateSupplierFormValues) => {
+    setFormError(null);
+
+    try {
+      const response = await createAdminSupplier(buildPayload(values));
+
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(DRAFT_KEY);
+      }
+
+      toast.success(response.message || "Supplier berhasil ditambahkan");
+      reset(createDefaultValues());
+    } catch (error) {
+      const validationErrors = getValidationErrors(error);
+      applyServerValidationErrors(validationErrors);
+
+      const message = getAuthErrorMessage(error);
+      setFormError(message);
+      toast.error(message);
+    }
+  };
+
   return (
     <AdminShell
       title="Add Supplier"
-      description="Halaman ini dipakai admin untuk memasukkan data supplier secara manual. Fokus saat ini adalah membuat form admin-side yang rapi, solid, dan siap disambungkan ke endpoint final."
+      description="Form admin ini sekarang live. Save Draft menyimpan ke browser, sedangkan Finalize Entry akan POST ke /api/admin/suppliers sesuai payload Postman."
       actions={
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low"
+            onClick={handleSaveDraft}
+            disabled={isSubmitting}
+            className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70"
           >
             <Save className="h-4 w-4" />
             Save Draft
           </button>
 
           <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95"
+            type="submit"
+            form="admin-supplier-form"
+            disabled={isSubmitting}
+            className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:opacity-70"
           >
-            <Send className="h-4 w-4" />
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
             Finalize Entry
           </button>
         </div>
       }
     >
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+      <form
+        id="admin-supplier-form"
+        onSubmit={handleSubmit(onSubmit)}
+        className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]"
+      >
         <aside className="h-fit rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
             Form Sections
           </p>
 
           <div className="mt-4 grid gap-2">
-            <a
-              href="#account-info"
-              className="rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm"
-            >
-              Account Info
-            </a>
-            <a
-              href="#personal-info"
-              className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 text-sm font-semibold text-on-surface-variant transition hover:bg-surface-container-low"
-            >
-              Personal Details
-            </a>
-            <a
-              href="#land-info"
-              className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 text-sm font-semibold text-on-surface-variant transition hover:bg-surface-container-low"
-            >
-              Land Records
-            </a>
-            <a
-              href="#payout-info"
-              className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 text-sm font-semibold text-on-surface-variant transition hover:bg-surface-container-low"
-            >
-              Payout Info
-            </a>
+            {sectionLinks.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className={
+                  item.active
+                    ? "rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm"
+                    : "rounded-2xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 text-sm font-semibold text-on-surface-variant transition hover:bg-surface-container-low"
+                }
+              >
+                {item.label}
+              </a>
+            ))}
           </div>
 
           <div className="mt-6 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4">
-            <p className="text-sm font-bold text-on-surface">Catatan</p>
+            <p className="text-sm font-bold text-on-surface">Payload Status</p>
             <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
-              Submit ke endpoint final belum disambungkan. Area ini sudah
-              dipersiapkan untuk workflow admin registration.
+              Finalize Entry akan mengirim payload admin supplier: biodata,
+              lands[], dan payout transfer / ewallet.
             </p>
           </div>
+
+          {formError ? (
+            <div className="mt-4 rounded-2xl border border-error/20 bg-error/5 p-4 text-sm text-error">
+              {formError}
+            </div>
+          ) : null}
         </aside>
 
         <div className="grid gap-6">
@@ -91,46 +356,28 @@ export default function AdminSupplierAddView() {
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Account Name
+                  Supplier Name
                 </label>
                 <input
                   type="text"
-                  placeholder="Budi Tani"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  placeholder="Tani Jaya"
+                  {...register("name")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
+                <FieldError message={errors.name?.message} />
               </div>
 
               <div className="space-y-2">
                 <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  placeholder="buditani"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Email
+                  Email (optional)
                 </label>
                 <input
                   type="email"
                   placeholder="supplier@example.com"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  {...register("email")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Temporary Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
+                <FieldError message={errors.email?.message} />
               </div>
             </div>
           </section>
@@ -160,9 +407,11 @@ export default function AdminSupplierAddView() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Budi Santoso"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  placeholder="Siti Rahayu"
+                  {...register("nama_lengkap")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
+                <FieldError message={errors.nama_lengkap?.message} />
               </div>
 
               <div className="space-y-2">
@@ -171,20 +420,24 @@ export default function AdminSupplierAddView() {
                 </label>
                 <input
                   type="text"
-                  placeholder="3271234567890001"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  placeholder="3271234567890002"
+                  {...register("no_ktp")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
+                <FieldError message={errors.no_ktp?.message} />
               </div>
 
               <div className="space-y-2">
                 <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  No HP
+                  Tempat Lahir
                 </label>
                 <input
                   type="text"
-                  placeholder="08123456789"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  placeholder="Garut"
+                  {...register("tempat_lahir")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
+                <FieldError message={errors.tempat_lahir?.message} />
               </div>
 
               <div className="space-y-2">
@@ -193,8 +446,57 @@ export default function AdminSupplierAddView() {
                 </label>
                 <input
                   type="date"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  {...register("tanggal_lahir")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
+                <FieldError message={errors.tanggal_lahir?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  Jenis Kelamin
+                </label>
+                <select
+                  {...register("jenis_kelamin")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                >
+                  {jenisKelaminOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <FieldError message={errors.jenis_kelamin?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  Status Perkawinan
+                </label>
+                <select
+                  {...register("status_perkawinan")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                >
+                  {statusPerkawinanOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <FieldError message={errors.status_perkawinan?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  No HP
+                </label>
+                <input
+                  type="text"
+                  placeholder="08129999888"
+                  {...register("no_hp")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                />
+                <FieldError message={errors.no_hp?.message} />
               </div>
 
               <div className="space-y-2 md:col-span-2">
@@ -203,9 +505,81 @@ export default function AdminSupplierAddView() {
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="Jl. Merdeka No. 10"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  placeholder="Jl. Sawah No. 3"
+                  {...register("alamat_domisili")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
+                <FieldError message={errors.alamat_domisili?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  Desa
+                </label>
+                <input
+                  type="text"
+                  placeholder="Sukamaju"
+                  {...register("desa")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                />
+                <FieldError message={errors.desa?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  Kecamatan
+                </label>
+                <input
+                  type="text"
+                  placeholder="Tarogong"
+                  {...register("kecamatan")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                />
+                <FieldError message={errors.kecamatan?.message} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  Kabupaten
+                </label>
+                <input
+                  type="text"
+                  placeholder="Garut"
+                  {...register("kabupaten")}
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                />
+                <FieldError message={errors.kabupaten?.message} />
+              </div>
+
+              <div className="space-y-3 md:col-span-2">
+                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  Bahasa Komunikasi
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {bahasaOptions.map((bahasa) => {
+                    const checked = selectedLanguages?.includes(bahasa);
+
+                    return (
+                      <label
+                        key={bahasa}
+                        className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+                          checked
+                            ? "border-primary/30 bg-primary/5 text-primary"
+                            : "border-outline-variant/15 bg-surface-container-low text-on-surface"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          value={bahasa}
+                          {...register("bahasa_komunikasi")}
+                          className="h-4 w-4 rounded border-outline"
+                        />
+                        {bahasa}
+                      </label>
+                    );
+                  })}
+                </div>
+                <FieldError message={errors.bahasa_komunikasi?.message} />
               </div>
             </div>
           </section>
@@ -214,46 +588,247 @@ export default function AdminSupplierAddView() {
             id="land-info"
             className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
-              Section 3
-            </p>
-            <h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
-              Land Records
-            </h2>
-
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Nama Lahan
-                </label>
-                <input
-                  type="text"
-                  placeholder="Lahan Utama"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                  <LandPlot className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+                    Section 3
+                  </p>
+                  <h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
+                    Land Records
+                  </h2>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Luas Lahan (m2)
-                </label>
-                <input
-                  type="number"
-                  placeholder="5000"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  append({
+                    nama_lahan: "",
+                    nama_pemilik: "",
+                    no_hp: "",
+                    alamat_lahan: "",
+                    desa: "",
+                    kecamatan: "",
+                    kabupaten: "",
+                    provinsi: "",
+                    kepemilikan: "milik_sendiri",
+                    luas_lahan_m2: 0,
+                    status_aktif: "aktif",
+                  })
+                }
+                className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-lowest"
+              >
+                <Plus className="h-4 w-4" />
+                Add Land
+              </button>
+            </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Alamat Lahan
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Jl. Kebun No. 5"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
-              </div>
+            <div className="mt-6 grid gap-6">
+              {fields.map((field, index) => (
+                <article
+                  key={field.id}
+                  className="rounded-3xl border border-outline-variant/15 bg-surface-container-low p-5"
+                >
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Land Entry
+                      </p>
+                      <p className="mt-1 text-lg font-bold text-on-surface">
+                        Lahan #{index + 1}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => remove(index)}
+                      disabled={fields.length === 1}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-2 text-sm font-bold text-on-surface transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remove
+                    </button>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Nama Lahan
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Sawah Selatan"
+                        {...register(`lands.${index}.nama_lahan`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError
+                        message={errors.lands?.[index]?.nama_lahan?.message}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Nama Pemilik
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Siti Rahayu"
+                        {...register(`lands.${index}.nama_pemilik`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError
+                        message={errors.lands?.[index]?.nama_pemilik?.message}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        No HP Lahan
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="08129999888"
+                        {...register(`lands.${index}.no_hp`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError message={errors.lands?.[index]?.no_hp?.message} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Luas Lahan (m2)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="3000"
+                        {...register(`lands.${index}.luas_lahan_m2`, {
+                          valueAsNumber: true,
+                        })}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError
+                        message={errors.lands?.[index]?.luas_lahan_m2?.message}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Alamat Lahan
+                      </label>
+                      <textarea
+                        rows={3}
+                        placeholder="Jl. Sawah Blok B"
+                        {...register(`lands.${index}.alamat_lahan`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError
+                        message={errors.lands?.[index]?.alamat_lahan?.message}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Desa
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Sukamaju"
+                        {...register(`lands.${index}.desa`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError message={errors.lands?.[index]?.desa?.message} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Kecamatan
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Tarogong"
+                        {...register(`lands.${index}.kecamatan`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError
+                        message={errors.lands?.[index]?.kecamatan?.message}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Kabupaten
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Garut"
+                        {...register(`lands.${index}.kabupaten`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError
+                        message={errors.lands?.[index]?.kabupaten?.message}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Provinsi
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Jawa Barat"
+                        {...register(`lands.${index}.provinsi`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      />
+                      <FieldError
+                        message={errors.lands?.[index]?.provinsi?.message}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Kepemilikan
+                      </label>
+                      <select
+                        {...register(`lands.${index}.kepemilikan`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      >
+                        {kepemilikanOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <FieldError
+                        message={errors.lands?.[index]?.kepemilikan?.message}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                        Status Aktif
+                      </label>
+                      <select
+                        {...register(`lands.${index}.status_aktif`)}
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      >
+                        {statusAktifOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <FieldError
+                        message={errors.lands?.[index]?.status_aktif?.message}
+                      />
+                    </div>
+                  </div>
+                </article>
+              ))}
             </div>
           </section>
 
@@ -261,62 +836,147 @@ export default function AdminSupplierAddView() {
             id="payout-info"
             className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
-              Section 4
-            </p>
-            <h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
-              Payout Info
-            </h2>
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                <CircleDollarSign className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+                  Section 4
+                </p>
+                <h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
+                  Payout Info
+                </h2>
+              </div>
+            </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
                   Payout Method
                 </label>
-                <select className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20">
-                  <option>transfer</option>
-                  <option>cash</option>
-                </select>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {payoutMethodOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+                        payoutMethod === option.value
+                          ? "border-primary/30 bg-primary/5 text-primary"
+                          : "border-outline-variant/15 bg-surface-container-low text-on-surface"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        value={option.value}
+                        {...register("payout.payout_method")}
+                        className="h-4 w-4"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+                <FieldError message={errors.payout?.payout_method?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Bank Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="BCA"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
-              </div>
+              {payoutMethod === "transfer" ? (
+                <>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="BCA"
+                      {...register("payout.bank_name")}
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    />
+                    <FieldError message={errors.payout?.bank_name?.message} />
+                  </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Bank Account Number
-                </label>
-                <input
-                  type="text"
-                  placeholder="1234567890"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                      Bank Account Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="1234567890"
+                      {...register("payout.bank_account_number")}
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    />
+                    <FieldError
+                      message={errors.payout?.bank_account_number?.message}
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Bank Account Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Budi Santoso"
-                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
-              </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                      Bank Account Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Siti Rahayu"
+                      {...register("payout.bank_account_name")}
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    />
+                    <FieldError
+                      message={errors.payout?.bank_account_name?.message}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                      E-wallet Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="GoPay"
+                      {...register("payout.ewallet_name")}
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    />
+                    <FieldError message={errors.payout?.ewallet_name?.message} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                      E-wallet Account Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="08129999888"
+                      {...register("payout.ewallet_account_number")}
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    />
+                    <FieldError
+                      message={errors.payout?.ewallet_account_number?.message}
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                      E-wallet Account Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Siti Rahayu"
+                      {...register("payout.ewallet_account_name")}
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    />
+                    <FieldError
+                      message={errors.payout?.ewallet_account_name?.message}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low"
+                onClick={handleSaveDraft}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70"
               >
                 <Save className="h-4 w-4" />
                 Save Draft
@@ -331,7 +991,7 @@ export default function AdminSupplierAddView() {
             </div>
           </section>
         </div>
-      </div>
+      </form>
     </AdminShell>
   );
 }

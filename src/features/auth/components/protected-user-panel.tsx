@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import UniversalAppShell from "@/components/common/universal-app-shell";
 import { getMe, logout } from "@/features/auth/api";
 import { clearAuthSession } from "@/features/auth/storage";
 import type { AuthUser } from "@/features/auth/types";
@@ -79,53 +80,14 @@ export default function ProtectedUserPanel({
   }
 
   return (
-    <div className="rounded-2xl bg-surface-container-lowest p-8 shadow-sm ring-1 ring-outline-variant/15">
-      <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="font-headline text-3xl font-extrabold text-on-surface">
-            {title}
-          </h1>
-          <p className="mt-2 max-w-2xl text-on-surface-variant">{description}</p>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl bg-surface-container-low p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Name
-              </p>
-              <p className="mt-2 text-lg font-bold text-on-surface">
-                {user?.name ?? "-"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-surface-container-low p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Email
-              </p>
-              <p className="mt-2 text-lg font-bold text-on-surface">
-                {user?.email ?? "-"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-surface-container-low p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Role
-              </p>
-              <p className="mt-2 text-lg font-bold capitalize text-on-surface">
-                {user?.role ?? "-"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-surface-container-low p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Status
-              </p>
-              <p className="mt-2 text-lg font-bold text-primary">
-                Authenticated
-              </p>
-            </div>
-          </div>
-        </div>
-
+    <UniversalAppShell
+      title={title}
+      description={description}
+      role={user?.role}
+      user={user}
+      onLogout={handleLogout}
+      isLoggingOut={isLoggingOut}
+      actions={
         <button
           type="button"
           onClick={handleLogout}
@@ -135,7 +97,7 @@ export default function ProtectedUserPanel({
           {isLoggingOut ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Logging out...
+              Sedang logout...
             </>
           ) : (
             <>
@@ -144,7 +106,47 @@ export default function ProtectedUserPanel({
             </>
           )}
         </button>
+      }
+    >
+      <div className="mx-auto max-w-6xl">
+        <div className="rounded-3xl bg-surface-container-lowest p-8 shadow-sm ring-1 ring-outline-variant/15">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl bg-surface-container-low p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                Nama
+              </p>
+              <p className="mt-2 text-lg font-bold text-on-surface">
+                {user?.name ?? "-"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-surface-container-low p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                Email
+              </p>
+              <p className="mt-2 text-lg font-bold text-on-surface">
+                {user?.email ?? "-"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-surface-container-low p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                Role
+              </p>
+              <p className="mt-2 text-lg font-bold capitalize text-on-surface">
+                {user?.role ?? "-"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-surface-container-low p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                Status
+              </p>
+              <p className="mt-2 text-lg font-bold text-primary">Aktif</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </UniversalAppShell>
   );
 }

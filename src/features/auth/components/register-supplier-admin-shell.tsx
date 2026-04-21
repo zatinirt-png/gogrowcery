@@ -8,12 +8,7 @@ import {
   UserCircle2,
 } from "lucide-react";
 
-type StepKey =
-  | "account"
-  | "personal"
-  | "land"
-  | "payout"
-  | "review";
+type StepKey = "account" | "personal" | "land" | "payout" | "review";
 
 type RegisterSupplierAdminShellProps = {
   activeStep: StepKey;
@@ -52,7 +47,7 @@ export default function RegisterSupplierAdminShell({
             </div>
             <div>
               <h2 className="font-headline font-bold leading-tight text-on-surface">
-                Supplier Registration
+                Guided Supplier Registration
               </h2>
               <p className="text-xs text-on-surface-variant">{stepLabel}</p>
             </div>
@@ -81,20 +76,17 @@ export default function RegisterSupplierAdminShell({
         </nav>
 
         <div className="mt-auto px-4 pb-4">
-          <button
-            type="button"
-            className="w-full rounded-xl bg-slate-200/50 px-4 py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-200"
-          >
-            Save Draft
-          </button>
+          <div className="rounded-xl bg-slate-200/50 px-4 py-3 text-sm font-semibold text-slate-600">
+            Draft tersimpan lokal selama onboarding.
+          </div>
         </div>
       </aside>
 
       <main className="flex flex-1 flex-col bg-surface">
-        <header className="sticky top-0 z-50 flex items-center justify-between bg-white/80 px-8 py-4 shadow-sm backdrop-blur-md">
+        <header className="sticky top-0 z-50 flex items-center justify-between bg-white px-8 py-4 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="font-headline text-xl font-bold tracking-tight text-green-800">
-              The Precision Harvest
+              GoGrowcery
             </span>
           </div>
 
@@ -129,8 +121,8 @@ export default function RegisterSupplierAdminShell({
                       Registration Guidance
                     </h4>
                     <p className="text-sm text-on-surface-variant">
-                      Complete each section carefully so the supplier profile can
-                      be reviewed with stronger data quality and fewer revisions.
+                      Lengkapi tiap bagian dengan benar agar registrasi supplier
+                      bisa diproses lebih cepat dan minim revisi.
                     </p>
                   </div>
                 </div>

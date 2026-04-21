@@ -118,15 +118,13 @@ export const supplierAdminStepTwoSchema = z.object({
   tempat_lahir: z.string().trim().min(1, "Tempat lahir wajib diisi"),
   tanggal_lahir: z.string().min(1, "Tanggal lahir wajib diisi"),
   jenis_kelamin: z.string().min(1, "Jenis kelamin wajib dipilih"),
-  status_perkawinan: z.string().min(1, "Status perkawinan wajib dipilih"),
+  status_perkawinan: z.string().trim().optional(),
   no_hp: requiredPhoneSchema,
   alamat_domisili: z.string().trim().min(1, "Alamat domisili wajib diisi"),
   desa: z.string().trim().min(1, "Desa wajib diisi"),
   kecamatan: z.string().trim().min(1, "Kecamatan wajib diisi"),
   kabupaten: z.string().trim().min(1, "Kabupaten wajib diisi"),
-  bahasa_komunikasi: z
-    .array(z.string())
-    .min(1, "Pilih minimal satu bahasa komunikasi"),
+  bahasa_komunikasi: z.array(z.string()).optional(),
 });
 
 export const supplierLandSchema = z.object({
@@ -154,18 +152,69 @@ export const supplierAdminStepThreeSchema = z.object({
     .min(1, "Minimal harus ada satu data lahan"),
 });
 
-export const supplierAdminStepFourSchema = z.object({
-  payout_method: z.string().min(1, "Metode payout wajib dipilih"),
-  bank_name: z.string().trim().min(1, "Nama institusi wajib diisi"),
-  bank_account_number: z
-    .string()
-    .trim()
-    .min(1, "Nomor akun wajib diisi"),
-  bank_account_name: z
-    .string()
-    .trim()
-    .min(1, "Nama pemilik akun wajib diisi"),
-});
+export const supplierAdminStepFourSchema = z
+  .object({
+    payout_method: z.string().min(1, "Metode payout wajib dipilih"),
+    bank_name: z.string().trim().optional(),
+    bank_account_number: z.string().trim().optional(),
+    bank_account_name: z.string().trim().optional(),
+    ewallet_name: z.string().trim().optional(),
+    ewallet_account_number: z.string().trim().optional(),
+    ewallet_account_name: z.string().trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.payout_method === "transfer") {
+      if (!data.bank_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["bank_name"],
+          message: "Nama bank wajib diisi",
+        });
+      }
+
+      if (!data.bank_account_number) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["bank_account_number"],
+          message: "Nomor rekening wajib diisi",
+        });
+      }
+
+      if (!data.bank_account_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["bank_account_name"],
+          message: "Nama pemilik rekening wajib diisi",
+        });
+      }
+    }
+
+    if (data.payout_method === "ewallet") {
+      if (!data.ewallet_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ewallet_name"],
+          message: "Nama e-wallet wajib diisi",
+        });
+      }
+
+      if (!data.ewallet_account_number) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ewallet_account_number"],
+          message: "Nomor akun e-wallet wajib diisi",
+        });
+      }
+
+      if (!data.ewallet_account_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ewallet_account_name"],
+          message: "Nama pemilik akun e-wallet wajib diisi",
+        });
+      }
+    }
+  });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type BuyerRegisterFormValues = z.infer<typeof buyerRegisterSchema>;
@@ -182,4 +231,98 @@ export type SupplierAdminStepThreeValues = z.infer<
 export type SupplierAdminLandValues = z.infer<typeof supplierLandSchema>;
 export type SupplierAdminStepFourValues = z.infer<
   typeof supplierAdminStepFourSchema
+>;
+
+export const adminSupplierPayoutSchema = z
+  .object({
+    payout_method: z.string().min(1, "Metode payout wajib dipilih"),
+    bank_name: z.string().trim().optional(),
+    bank_account_number: z.string().trim().optional(),
+    bank_account_name: z.string().trim().optional(),
+    ewallet_name: z.string().trim().optional(),
+    ewallet_account_number: z.string().trim().optional(),
+    ewallet_account_name: z.string().trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.payout_method === "transfer") {
+      if (!data.bank_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["bank_name"],
+          message: "Nama bank wajib diisi",
+        });
+      }
+
+      if (!data.bank_account_number) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["bank_account_number"],
+          message: "Nomor rekening wajib diisi",
+        });
+      }
+
+      if (!data.bank_account_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["bank_account_name"],
+          message: "Nama pemilik rekening wajib diisi",
+        });
+      }
+    }
+
+    if (data.payout_method === "ewallet") {
+      if (!data.ewallet_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ewallet_name"],
+          message: "Nama e-wallet wajib diisi",
+        });
+      }
+
+      if (!data.ewallet_account_number) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ewallet_account_number"],
+          message: "Nomor akun e-wallet wajib diisi",
+        });
+      }
+
+      if (!data.ewallet_account_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ewallet_account_name"],
+          message: "Nama pemilik akun e-wallet wajib diisi",
+        });
+      }
+    }
+  });
+
+export const adminCreateSupplierSchema = z.object({
+  name: z.string().trim().min(1, "Nama supplier wajib diisi"),
+  email: optionalEmailSchema,
+  nama_lengkap: z.string().trim().min(1, "Nama lengkap wajib diisi"),
+  no_ktp: z
+    .string()
+    .trim()
+    .regex(/^\d{16}$/, "NIK harus 16 digit angka"),
+  tempat_lahir: z.string().trim().min(1, "Tempat lahir wajib diisi"),
+  tanggal_lahir: z.string().min(1, "Tanggal lahir wajib diisi"),
+  jenis_kelamin: z.string().min(1, "Jenis kelamin wajib dipilih"),
+  status_perkawinan: z.string().min(1, "Status perkawinan wajib dipilih"),
+  no_hp: requiredPhoneSchema,
+  alamat_domisili: z.string().trim().min(1, "Alamat domisili wajib diisi"),
+  desa: z.string().trim().min(1, "Desa wajib diisi"),
+  kecamatan: z.string().trim().min(1, "Kecamatan wajib diisi"),
+  kabupaten: z.string().trim().min(1, "Kabupaten wajib diisi"),
+  bahasa_komunikasi: z
+    .array(z.string())
+    .min(1, "Pilih minimal satu bahasa komunikasi"),
+  lands: z
+    .array(supplierLandSchema)
+    .min(1, "Minimal harus ada satu data lahan"),
+  payout: adminSupplierPayoutSchema,
+});
+
+export type AdminCreateSupplierFormValues = z.infer<
+  typeof adminCreateSupplierSchema
 >;

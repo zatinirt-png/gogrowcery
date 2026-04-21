@@ -1,257 +1,122 @@
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { registerSupplier } from "@/features/auth/api";
+import type { ComponentType, ReactNode } from "react";
 import {
-  supplierRegisterSchema,
-  type SupplierRegisterFormValues,
-} from "@/features/auth/schema";
-import {
-  getAuthErrorMessage,
-  getValidationErrors,
-} from "@/features/auth/utils";
+  Badge,
+  CircleDollarSign,
+  ClipboardCheck,
+  Map,
+  UserCircle2,
+} from "lucide-react";
 
-export default function RegisterSupplierForm() {
-  const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirmation, setShowPasswordConfirmation] =
-    useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+type StepKey = "account" | "personal" | "land" | "payout" | "review";
 
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<SupplierRegisterFormValues>({
-    resolver: zodResolver(supplierRegisterSchema),
-    defaultValues: {
-      name: "",
-      username: "",
-      email: "",
-      password: "",
-      password_confirmation: "",
-      terms: false,
-    },
-  });
+type RegisterSupplierAdminShellProps = {
+  activeStep: StepKey;
+  stepLabel: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+};
 
-  const onSubmit = async (values: SupplierRegisterFormValues) => {
-    setFormError(null);
+const steps: {
+  key: StepKey;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
+  { key: "account", label: "Akun", icon: UserCircle2 },
+  { key: "personal", label: "Data Diri", icon: Badge },
+  { key: "land", label: "Data Lahan", icon: Map },
+  { key: "payout", label: "Pencairan", icon: CircleDollarSign },
+  { key: "review", label: "Tinjau", icon: ClipboardCheck },
+];
 
-    try {
-      await registerSupplier({
-        name: values.name,
-        username: values.username,
-        email: values.email?.trim() ? values.email.trim() : null,
-        password: values.password,
-        password_confirmation: values.password_confirmation,
-      });
-
-      toast.success("Registrasi supplier berhasil. Silakan login.");
-      router.replace("/login");
-      router.refresh();
-    } catch (error) {
-      const validationErrors = getValidationErrors(error);
-
-      if (validationErrors.name) {
-        setError("name", { type: "server", message: validationErrors.name });
-      }
-      if (validationErrors.username) {
-        setError("username", {
-          type: "server",
-          message: validationErrors.username,
-        });
-      }
-      if (validationErrors.email) {
-        setError("email", { type: "server", message: validationErrors.email });
-      }
-      if (validationErrors.password) {
-        setError("password", {
-          type: "server",
-          message: validationErrors.password,
-        });
-      }
-      if (validationErrors.password_confirmation) {
-        setError("password_confirmation", {
-          type: "server",
-          message: validationErrors.password_confirmation,
-        });
-      }
-
-      const message = getAuthErrorMessage(error);
-      setFormError(message);
-      toast.error(message);
-    }
-  };
-
+export default function RegisterSupplierAdminShell({
+  activeStep,
+  stepLabel,
+  title,
+  description,
+  children,
+}: RegisterSupplierAdminShellProps) {
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-          Account Name
-        </label>
-        <input
-          type="text"
-          placeholder="Budi Tani"
-          {...register("name")}
-          className="w-full rounded-xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30"
-        />
-        {errors.name && (
-          <p className="text-sm font-medium text-error">{errors.name.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-          Username
-        </label>
-        <input
-          type="text"
-          placeholder="buditani"
-          {...register("username")}
-          className="w-full rounded-xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30"
-        />
-        {errors.username && (
-          <p className="text-sm font-medium text-error">
-            {errors.username.message}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-          Email (optional)
-        </label>
-        <input
-          type="email"
-          placeholder="supplier@example.com"
-          {...register("email")}
-          className="w-full rounded-xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30"
-        />
-        {errors.email && (
-          <p className="text-sm font-medium text-error">{errors.email.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-          Password
-        </label>
-
-        <div className="relative">
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
-            {...register("password")}
-            className="w-full rounded-xl border border-transparent bg-surface-container-low px-4 py-3.5 pr-12 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((prev) => !prev)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-outline"
-          >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-          </button>
+    <div className="flex min-h-screen bg-background text-on-surface">
+      <aside className="hidden h-screen w-80 shrink-0 border-r border-outline-variant/15 bg-surface-container-lowest md:flex md:flex-col">
+        <div className="border-b border-outline-variant/15 px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="signature-gradient flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-sm">
+              <UserCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-headline text-xl font-extrabold tracking-tight text-primary">
+                Registrasi Supplier
+              </h2>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-on-surface-variant">
+                Guided Flow
+              </p>
+            </div>
+          </div>
         </div>
 
-        {errors.password && (
-          <p className="text-sm font-medium text-error">
-            {errors.password.message}
-          </p>
-        )}
-      </div>
+        <div className="flex-1 px-4 py-6">
+          <div className="mb-4 px-3 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+            {stepLabel}
+          </div>
 
-      <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-          Confirm Password
-        </label>
+          <nav className="space-y-2">
+            {steps.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = step.key === activeStep;
 
-        <div className="relative">
-          <input
-            type={showPasswordConfirmation ? "text" : "password"}
-            placeholder="••••••••"
-            {...register("password_confirmation")}
-            className="w-full rounded-xl border border-transparent bg-surface-container-low px-4 py-3.5 pr-12 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/30"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPasswordConfirmation((prev) => !prev)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-outline"
-          >
-            {showPasswordConfirmation ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-          </button>
+              return (
+                <div
+                  key={step.key}
+                  className={[
+                    "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
+                    isActive
+                      ? "signature-gradient text-white shadow-sm"
+                      : "text-on-surface-variant",
+                  ].join(" ")}
+                >
+                  <div
+                    className={[
+                      "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
+                      isActive ? "bg-white/20 text-white" : "bg-surface-container-low text-on-surface",
+                    ].join(" ")}
+                  >
+                    {index + 1}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4" />
+                    <span>{step.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </nav>
         </div>
 
-        {errors.password_confirmation && (
-          <p className="text-sm font-medium text-error">
-            {errors.password_confirmation.message}
-          </p>
-        )}
-      </div>
-
-      <label className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          {...register("terms")}
-          className="mt-1 h-5 w-5 rounded-md border-surface-container-highest text-primary focus:ring-primary"
-        />
-        <span className="text-sm font-medium leading-relaxed text-on-surface-variant">
-          I agree to the{" "}
-          <Link href="#" className="font-bold text-primary hover:underline">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="#" className="font-bold text-primary hover:underline">
-            Privacy Policy
-          </Link>
-          .
-        </span>
-      </label>
-
-      {errors.terms && (
-        <p className="text-sm font-medium text-error">{errors.terms.message}</p>
-      )}
-
-      {formError && (
-        <div className="rounded-xl border border-error/15 bg-error-container px-4 py-3 text-sm font-medium text-on-error-container">
-          {formError}
+        <div className="border-t border-outline-variant/15 p-4">
+          <div className="rounded-3xl border border-outline-variant/15 bg-surface-container-low p-4 text-sm leading-7 text-on-surface-variant">
+            Draft akan tetap tersimpan di browser selama Anda melanjutkan proses registrasi.
+          </div>
         </div>
-      )}
+      </aside>
 
-      <div className="rounded-xl bg-primary/5 p-4 text-sm leading-7 text-on-surface-variant">
-        Endpoint supplier public tetap mengarah ke <code>/api/auth/register/supplier</code>.
-        Namun collection Postman production menunjukkan payload supplier lengkap.
-        Jadi untuk onboarding penuh, gunakan jalur admin multi-step di sebelah ini.
-      </div>
+      <main className="flex flex-1 flex-col bg-background">
+        <div className="border-b border-outline-variant/15 bg-surface-container-lowest px-6 py-5 md:px-10">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+            {stepLabel}
+          </p>
+          <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
+            {title}
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-on-surface-variant">
+            {description}
+          </p>
+        </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="signature-gradient flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Submitting...
-          </>
-        ) : (
-          "Apply to Network"
-        )}
-      </button>
-    </form>
+        <div className="flex-1 bg-surface-container-low px-6 py-8 md:px-10 md:py-10">
+          <div className="mx-auto max-w-5xl">{children}</div>
+        </div>
+      </main>
+    </div>
   );
 }

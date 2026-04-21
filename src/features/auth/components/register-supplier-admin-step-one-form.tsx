@@ -10,13 +10,26 @@ import {
   supplierAdminStepOneSchema,
   type SupplierAdminStepOneValues,
 } from "@/features/auth/schema";
+import {
+  SUPPLIER_GUIDED_DRAFT_KEY,
+  supplierGuidedRoutes,
+} from "@/features/auth/supplier-guided-register";
 
-const DRAFT_KEY = "gg_supplier_admin_onboarding_draft";
+const DRAFT_KEY = SUPPLIER_GUIDED_DRAFT_KEY;
 
 type SupplierAdminDraft = {
   step1?: SupplierAdminStepOneValues;
   updatedAt?: string;
 };
+
+function Label({ text, required = false }: { text: string; required?: boolean }) {
+  return (
+    <label className="mb-2 block text-sm font-bold text-on-surface">
+      {text}
+      {required ? <span className="ml-1 text-error">*</span> : null}
+    </label>
+  );
+}
 
 export default function RegisterSupplierAdminStepOneForm() {
   const router = useRouter();
@@ -68,153 +81,121 @@ export default function RegisterSupplierAdminStepOneForm() {
     };
 
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    toast.success("Step 1 saved. Lanjut ke Step 2.");
-    router.push("/register/supplier/admin/step-2");
+    toast.success("Data akun tersimpan.");
+    router.push(supplierGuidedRoutes.step2);
   };
 
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-10 shadow-sm">
+    <div className="rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm md:p-8">
+      <div className="mb-8 rounded-2xl bg-surface-container-low p-4 text-sm leading-7 text-on-surface-variant">
+        Kolom dengan tanda <span className="font-bold text-error">*</span> wajib diisi.
+      </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="ml-1 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-              Full Name
-            </label>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            <Label text="Nama akun" required />
             <input
               type="text"
-              placeholder="e.g. Jonathan Thorne"
+              placeholder="Contoh: Budi Tani"
               {...register("name")}
-              className="w-full rounded-xl border-none bg-surface-container-low px-4 py-4 text-on-surface placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary-fixed-dim"
+              className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
             {errors.name && (
-              <p className="text-sm font-medium text-error">
-                {errors.name.message}
-              </p>
+              <p className="mt-2 text-sm font-medium text-error">{errors.name.message}</p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <label className="ml-1 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-              Username
-            </label>
+          <div>
+            <Label text="Username" required />
             <input
               type="text"
-              placeholder="jthorne_harvest"
+              placeholder="Contoh: buditani"
               {...register("username")}
-              className="w-full rounded-xl border-none bg-surface-container-low px-4 py-4 text-on-surface placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary-fixed-dim"
+              className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
             {errors.username && (
-              <p className="text-sm font-medium text-error">
-                {errors.username.message}
-              </p>
+              <p className="mt-2 text-sm font-medium text-error">{errors.username.message}</p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <label className="ml-1 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-              Email Address (optional)
-            </label>
+          <div className="md:col-span-2">
+            <Label text="Email aktif" />
             <input
               type="email"
-              placeholder="jonathan@thornefarms.com"
+              placeholder="contoh@email.com"
               {...register("email")}
-              className="w-full rounded-xl border-none bg-surface-container-low px-4 py-4 text-on-surface placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary-fixed-dim"
+              className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
+            <p className="mt-2 text-sm text-on-surface-variant">Opsional, tetapi disarankan agar komunikasi lebih mudah.</p>
             {errors.email && (
-              <p className="text-sm font-medium text-error">
-                {errors.email.message}
-              </p>
+              <p className="mt-2 text-sm font-medium text-error">{errors.email.message}</p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <label className="ml-1 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-              Secure Password
-            </label>
+          <div>
+            <Label text="Kata sandi" required />
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••••••"
+                placeholder="Minimal 8 karakter"
                 {...register("password")}
-                className="w-full rounded-xl border-none bg-surface-container-low px-4 py-4 pr-12 text-on-surface placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary-fixed-dim"
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 pr-12 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant"
               >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {errors.password && (
-              <p className="text-sm font-medium text-error">
-                {errors.password.message}
-              </p>
+              <p className="mt-2 text-sm font-medium text-error">{errors.password.message}</p>
             )}
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <label className="ml-1 block text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-              Confirm Password
-            </label>
+          <div>
+            <Label text="Konfirmasi kata sandi" required />
             <div className="relative">
               <input
                 type={showPasswordConfirmation ? "text" : "password"}
-                placeholder="••••••••••••"
+                placeholder="Ulangi kata sandi"
                 {...register("password_confirmation")}
-                className="w-full rounded-xl border-none bg-surface-container-low px-4 py-4 pr-12 text-on-surface placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary-fixed-dim"
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 pr-12 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
               <button
                 type="button"
-                onClick={() =>
-                  setShowPasswordConfirmation((prev) => !prev)
-                }
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                onClick={() => setShowPasswordConfirmation((prev) => !prev)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant"
               >
-                {showPasswordConfirmation ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
+                {showPasswordConfirmation ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {errors.password_confirmation && (
-              <p className="text-sm font-medium text-error">
+              <p className="mt-2 text-sm font-medium text-error">
                 {errors.password_confirmation.message}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-between gap-6 border-t border-surface-container pt-8 md:flex-row">
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-12 rounded-full bg-primary" />
-            <div className="h-2 w-4 rounded-full bg-surface-container-highest" />
-            <div className="h-2 w-4 rounded-full bg-surface-container-highest" />
-            <div className="h-2 w-4 rounded-full bg-surface-container-highest" />
-            <div className="h-2 w-4 rounded-full bg-surface-container-highest" />
-            <span className="ml-2 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-              20% Complete
-            </span>
-          </div>
+        <div className="flex flex-col gap-4 border-t border-outline-variant/15 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-on-surface-variant">Langkah 1 dari 5</p>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="signature-gradient flex items-center gap-2 rounded-xl px-10 py-4 font-bold text-white shadow-lg transition-all hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-70"
+            className="signature-gradient inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
+                Menyimpan...
               </>
             ) : (
               <>
-                <span>Continue to Step 2</span>
+                Lanjut ke data diri
                 <ArrowRight className="h-4 w-4" />
               </>
             )}

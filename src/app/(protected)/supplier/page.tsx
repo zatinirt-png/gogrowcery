@@ -1,14 +1,5 @@
-import ProtectedUserPanel from "@/features/auth/components/protected-user-panel";
+import SupplierBountiesWorkspace from "@/features/bounty/components/supplier/supplier-bounties-workspace";
 
 export default function SupplierPage() {
-  return (
-    <main className="min-h-screen bg-background px-6 py-16">
-      <div className="mx-auto max-w-6xl">
-        <ProtectedUserPanel
-          title="Supplier Workspace"
-          description="Halaman sementara untuk verifikasi login supplier, auth token, pemanggilan /me, dan logout."
-        />
-      </div>
-    </main>
-  );
+  return <SupplierBountiesWorkspace />;
 }

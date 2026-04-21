@@ -1,16 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  Banknote,
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  Smartphone,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -18,8 +10,12 @@ import {
   supplierAdminStepFourSchema,
   type SupplierAdminStepFourValues,
 } from "@/features/auth/schema";
+import {
+  SUPPLIER_GUIDED_DRAFT_KEY,
+  supplierGuidedRoutes,
+} from "@/features/auth/supplier-guided-register";
 
-const DRAFT_KEY = "gg_supplier_admin_onboarding_draft";
+const DRAFT_KEY = SUPPLIER_GUIDED_DRAFT_KEY;
 
 type SupplierAdminDraft = {
   step1?: Record<string, unknown>;
@@ -29,15 +25,23 @@ type SupplierAdminDraft = {
   updatedAt?: string;
 };
 
+function Label({ text, required = false }: { text: string; required?: boolean }) {
+  return (
+    <label className="mb-2 block text-sm font-bold text-on-surface">
+      {text}
+      {required ? <span className="ml-1 text-error">*</span> : null}
+    </label>
+  );
+}
+
 export default function RegisterSupplierAdminStepFourForm() {
   const router = useRouter();
-  const [showAccountNumber, setShowAccountNumber] = useState(false);
 
   const {
     register,
+    watch,
     handleSubmit,
     setValue,
-    watch,
     getValues,
     formState: { errors, isSubmitting },
   } = useForm<SupplierAdminStepFourValues>({
@@ -47,6 +51,9 @@ export default function RegisterSupplierAdminStepFourForm() {
       bank_name: "",
       bank_account_number: "",
       bank_account_name: "",
+      ewallet_name: "",
+      ewallet_account_number: "",
+      ewallet_account_name: "",
     },
   });
 
@@ -62,11 +69,14 @@ export default function RegisterSupplierAdminStepFourForm() {
 
       setValue("payout_method", parsed.step4.payout_method ?? "transfer");
       setValue("bank_name", parsed.step4.bank_name ?? "");
-      setValue(
-        "bank_account_number",
-        parsed.step4.bank_account_number ?? ""
-      );
+      setValue("bank_account_number", parsed.step4.bank_account_number ?? "");
       setValue("bank_account_name", parsed.step4.bank_account_name ?? "");
+      setValue("ewallet_name", parsed.step4.ewallet_name ?? "");
+      setValue(
+        "ewallet_account_number",
+        parsed.step4.ewallet_account_number ?? ""
+      );
+      setValue("ewallet_account_name", parsed.step4.ewallet_account_name ?? "");
     } catch {
       // ignore malformed draft
     }
@@ -77,324 +87,172 @@ export default function RegisterSupplierAdminStepFourForm() {
 
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        parsed = JSON.parse(raw) as SupplierAdminDraft;
-      }
+      if (raw) parsed = JSON.parse(raw) as SupplierAdminDraft;
     } catch {
       parsed = {};
     }
 
-    const nextDraft: SupplierAdminDraft = {
-      ...parsed,
-      step4: values,
-      updatedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(nextDraft));
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        ...parsed,
+        step4: values,
+        updatedAt: new Date().toISOString(),
+      })
+    );
   };
 
   const handleBack = () => {
     saveDraft(getValues());
-    router.push("/register/supplier/admin/step-3");
-  };
-
-  const handleSaveDraft = () => {
-    saveDraft(getValues());
-    toast.success("Draft step 4 berhasil disimpan.");
+    router.push(supplierGuidedRoutes.step3);
   };
 
   const onSubmit = async (values: SupplierAdminStepFourValues) => {
     saveDraft(values);
-    toast.success("Step 4 saved. Lanjut ke Review.");
-    router.push("/register/supplier/admin/step-5");
+    toast.success("Data pencairan tersimpan.");
+    router.push(supplierGuidedRoutes.step5);
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-12 gap-8 items-start">
-      <div className="col-span-12 space-y-6 lg:col-span-7">
-        <div className="rounded-xl bg-surface-container-lowest p-8 shadow-sm ring-1 ring-black/5">
-          <h3 className="mb-6 flex items-center gap-2 text-lg font-bold">
-            <Banknote className="h-5 w-5 text-primary" />
-            Select Payout Method
-          </h3>
+    <div className="rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm md:p-8">
+      <div className="mb-8 rounded-2xl bg-surface-container-low p-4 text-sm leading-7 text-on-surface-variant">
+        Nomor rekening atau nomor e-wallet tidak lagi ditampilkan sebagai field password. Data tetap bisa ditinjau lagi di langkah berikutnya.
+      </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <label className="relative cursor-pointer">
-              <input
-                type="radio"
-                value="transfer"
-                {...register("payout_method")}
-                className="peer hidden"
-              />
-              <div className="rounded-xl border-2 border-surface-container-high bg-surface-container-low p-5 transition-all peer-checked:border-primary peer-checked:bg-primary-container/5 hover:border-primary/50">
-                <div className="flex flex-col items-center gap-3 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
-                    <Banknote className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-on-surface">
-                      Bank Transfer
-                    </p>
-                    <p className="mt-1 text-[10px] text-on-surface-variant">
-                      Recommended for large sums
-                    </p>
-                  </div>
-                </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <section>
+          <Label text="Metode pencairan" required />
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4">
+              <input type="radio" value="transfer" {...register("payout_method")} className="mt-1" />
+              <div>
+                <p className="font-bold text-on-surface">Transfer bank</p>
+                <p className="mt-1 text-sm leading-7 text-on-surface-variant">Gunakan rekening bank untuk pencairan dana.</p>
               </div>
             </label>
 
-            <label className="relative cursor-pointer">
-              <input
-                type="radio"
-                value="ewallet"
-                {...register("payout_method")}
-                className="peer hidden"
-              />
-              <div className="rounded-xl border-2 border-surface-container-high bg-surface-container-low p-5 transition-all peer-checked:border-primary peer-checked:bg-primary-container/5 hover:border-primary/50">
-                <div className="flex flex-col items-center gap-3 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
-                    <Smartphone className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-on-surface">
-                      E-wallet
-                    </p>
-                    <p className="mt-1 text-[10px] text-on-surface-variant">
-                      Instant mobile settlements
-                    </p>
-                  </div>
-                </div>
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4">
+              <input type="radio" value="ewallet" {...register("payout_method")} className="mt-1" />
+              <div>
+                <p className="font-bold text-on-surface">E-wallet</p>
+                <p className="mt-1 text-sm leading-7 text-on-surface-variant">Gunakan akun e-wallet untuk pencairan dana.</p>
               </div>
             </label>
           </div>
+          {errors.payout_method && <p className="mt-2 text-sm font-medium text-error">{errors.payout_method.message}</p>}
+        </section>
 
-          {errors.payout_method && (
-            <p className="mt-4 text-sm font-medium text-error">
-              {errors.payout_method.message}
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-xl bg-surface-container-lowest p-8 shadow-sm ring-1 ring-black/5">
-          <div className="mb-8 flex items-center justify-between">
-            <h3 className="text-lg font-bold">Banking Details</h3>
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary">
-              <Lock className="h-4 w-4" />
-              Encrypted
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-tighter text-on-surface-variant/80">
-                Account Holder Name
-              </label>
+        {payoutMethod === "transfer" ? (
+          <section className="grid gap-6 md:grid-cols-2">
+            <div>
+              <Label text="Nama pemilik rekening" required />
               <input
                 type="text"
-                placeholder="Full legal name"
+                placeholder="Sesuai nama rekening"
                 {...register("bank_account_name")}
-                className="w-full rounded-xl border-0 bg-surface-container-low px-4 py-3 text-sm font-medium transition-shadow focus:ring-2 focus:ring-primary-container"
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
-              {errors.bank_account_name && (
-                <p className="text-sm font-medium text-error">
-                  {errors.bank_account_name.message}
-                </p>
-              )}
+              {errors.bank_account_name && <p className="mt-2 text-sm font-medium text-error">{errors.bank_account_name.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-tighter text-on-surface-variant/80">
-                Institution Name
-              </label>
-
+            <div>
+              <Label text="Nama bank" required />
               <select
                 {...register("bank_name")}
-                className="w-full appearance-none rounded-xl border-0 bg-surface-container-low px-4 py-3 text-sm font-medium transition-shadow focus:ring-2 focus:ring-primary-container"
+                className="w-full appearance-none rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
-                <option value="">
-                  {payoutMethod === "ewallet"
-                    ? "Select e-wallet provider"
-                    : "Select bank"}
-                </option>
-
-                {payoutMethod === "ewallet" ? (
-                  <>
-                    <option value="gopay">GoPay</option>
-                    <option value="ovo">OVO</option>
-                    <option value="dana">DANA</option>
-                    <option value="shopeepay">ShopeePay</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="bca">BCA</option>
-                    <option value="bri">BRI</option>
-                    <option value="bni">BNI</option>
-                    <option value="mandiri">Mandiri</option>
-                  </>
-                )}
+                <option value="">Pilih bank</option>
+                <option value="BCA">BCA</option>
+                <option value="BRI">BRI</option>
+                <option value="BNI">BNI</option>
+                <option value="Mandiri">Mandiri</option>
               </select>
-
-              {errors.bank_name && (
-                <p className="text-sm font-medium text-error">
-                  {errors.bank_name.message}
-                </p>
-              )}
+              {errors.bank_name && <p className="mt-2 text-sm font-medium text-error">{errors.bank_name.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-tighter text-on-surface-variant/80">
-                {payoutMethod === "ewallet"
-                  ? "E-wallet Number"
-                  : "Account Number"}
-              </label>
-
-              <div className="relative">
-                <input
-                  type={showAccountNumber ? "text" : "password"}
-                  placeholder={
-                    payoutMethod === "ewallet"
-                      ? "Enter registered mobile number"
-                      : "Enter account number"
-                  }
-                  {...register("bank_account_number")}
-                  className="w-full rounded-xl border-0 bg-surface-container-low px-4 py-3 pr-12 text-sm font-medium transition-shadow focus:ring-2 focus:ring-primary-container"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAccountNumber((prev) => !prev)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant/40"
-                >
-                  {showAccountNumber ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-
-              {errors.bank_account_number && (
-                <p className="text-sm font-medium text-error">
-                  {errors.bank_account_number.message}
-                </p>
-              )}
+            <div className="md:col-span-2">
+              <Label text="Nomor rekening" required />
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Masukkan nomor rekening"
+                {...register("bank_account_number")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.bank_account_number && <p className="mt-2 text-sm font-medium text-error">{errors.bank_account_number.message}</p>}
             </div>
-          </div>
-        </div>
+          </section>
+        ) : (
+          <section className="grid gap-6 md:grid-cols-2">
+            <div>
+              <Label text="Nama pemilik akun e-wallet" required />
+              <input
+                type="text"
+                placeholder="Sesuai nama akun"
+                {...register("ewallet_account_name")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.ewallet_account_name && <p className="mt-2 text-sm font-medium text-error">{errors.ewallet_account_name.message}</p>}
+            </div>
 
-        <div className="flex items-center justify-between pt-4">
+            <div>
+              <Label text="Nama e-wallet" required />
+              <select
+                {...register("ewallet_name")}
+                className="w-full appearance-none rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">Pilih e-wallet</option>
+                <option value="GoPay">GoPay</option>
+                <option value="OVO">OVO</option>
+                <option value="DANA">DANA</option>
+                <option value="ShopeePay">ShopeePay</option>
+              </select>
+              {errors.ewallet_name && <p className="mt-2 text-sm font-medium text-error">{errors.ewallet_name.message}</p>}
+            </div>
+
+            <div className="md:col-span-2">
+              <Label text="Nomor e-wallet" required />
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Masukkan nomor e-wallet"
+                {...register("ewallet_account_number")}
+                className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              {errors.ewallet_account_number && <p className="mt-2 text-sm font-medium text-error">{errors.ewallet_account_number.message}</p>}
+            </div>
+          </section>
+        )}
+
+        <div className="flex flex-col gap-4 border-t border-outline-variant/15 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={handleBack}
-            className="px-6 py-3 text-sm font-bold text-on-surface-variant transition-colors hover:text-on-surface"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-6 py-3.5 font-bold text-on-surface transition hover:bg-surface-container-high"
           >
-            ← Go Back
+            <ArrowLeft className="h-4 w-4" />
+            Kembali
           </button>
 
-          <div className="flex gap-4">
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              className="rounded-xl bg-surface-container-high px-8 py-3 text-sm font-bold text-on-surface-variant transition-colors hover:bg-surface-container-highest"
-            >
-              Save Draft
-            </button>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="signature-gradient flex items-center gap-2 rounded-xl px-12 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  Confirm and Continue
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="col-span-12 space-y-6 lg:col-span-5">
-        <div className="rounded-xl border-l-4 border-primary bg-surface-container p-6 shadow-sm">
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-primary">
-            Next Projected Payout
-          </p>
-          <div className="mb-1 flex items-baseline gap-2">
-            <span className="font-headline text-3xl font-extrabold text-on-surface">
-              $12,450.00
-            </span>
-            <span className="text-xs font-medium text-on-surface-variant">
-              Estimated
-            </span>
-          </div>
-          <p className="text-xs leading-relaxed text-on-surface-variant">
-            Based on your currently registered inventory of{" "}
-            <span className="font-bold text-on-surface">
-              premium arabica beans
-            </span>
-            .
-          </p>
-        </div>
-
-        <div className="relative overflow-hidden rounded-xl bg-surface-container-lowest p-8 shadow-sm ring-1 ring-black/5">
-          <div className="absolute -bottom-10 -right-10 opacity-5">
-            <Lock className="h-32 w-32" />
-          </div>
-
-          <h4 className="mb-4 text-sm font-bold">The Precision Standard</h4>
-
-          <ul className="space-y-4">
-            <li className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
-                <Lock className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-on-surface">
-                  Bank-Grade Encryption
-                </p>
-                <p className="mt-0.5 text-[10px] leading-normal text-on-surface-variant">
-                  Your financial data is protected before the final registration
-                  payload is submitted.
-                </p>
-              </div>
-            </li>
-
-            <li className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="signature-gradient inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Menyimpan...
+              </>
+            ) : (
+              <>
+                Lanjut ke peninjauan
                 <ArrowRight className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-on-surface">
-                  T+2 Settlement Cycle
-                </p>
-                <p className="mt-0.5 text-[10px] leading-normal text-on-surface-variant">
-                  Fast-track payments for verified suppliers after operational
-                  verification.
-                </p>
-              </div>
-            </li>
-          </ul>
+              </>
+            )}
+          </button>
         </div>
-
-        <div className="flex items-start gap-4 rounded-xl bg-primary/5 p-6">
-          <div className="text-primary">💡</div>
-          <div>
-            <p className="mb-1 text-xs font-bold text-primary">
-              Need help with regional codes?
-            </p>
-            <p className="text-[10px] leading-normal text-on-surface-variant">
-              You can continue with bank or e-wallet selection now, then refine
-              operational payout validation at review.
-            </p>
-          </div>
-        </div>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

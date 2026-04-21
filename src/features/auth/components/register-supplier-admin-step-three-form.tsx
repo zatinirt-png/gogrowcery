@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -11,8 +11,12 @@ import {
   type SupplierAdminLandValues,
   type SupplierAdminStepThreeValues,
 } from "@/features/auth/schema";
+import {
+  SUPPLIER_GUIDED_DRAFT_KEY,
+  supplierGuidedRoutes,
+} from "@/features/auth/supplier-guided-register";
 
-const DRAFT_KEY = "gg_supplier_admin_onboarding_draft";
+const DRAFT_KEY = SUPPLIER_GUIDED_DRAFT_KEY;
 
 type SupplierAdminDraft = {
   step1?: Record<string, unknown>;
@@ -21,8 +25,8 @@ type SupplierAdminDraft = {
   updatedAt?: string;
 };
 
-const emptyLand = (): SupplierAdminLandValues => ({
-  nama_lahan: "",
+const createEmptyLand = (index: number): SupplierAdminLandValues => ({
+  nama_lahan: `Lahan ${index}`,
   nama_pemilik: "",
   no_hp: "",
   alamat_lahan: "",
@@ -35,27 +39,43 @@ const emptyLand = (): SupplierAdminLandValues => ({
   status_aktif: "aktif",
 });
 
+function Label({ text, required = false }: { text: string; required?: boolean }) {
+  return (
+    <label className="mb-2 block text-sm font-bold text-on-surface">
+      {text}
+      {required ? <span className="ml-1 text-error">*</span> : null}
+    </label>
+  );
+}
+
+function normalizeLands(lands: SupplierAdminLandValues[]) {
+  return lands.map((land, index) => ({
+    ...land,
+    nama_lahan: land.nama_lahan?.trim() || `Lahan ${index + 1}`,
+  }));
+}
+
 export default function RegisterSupplierAdminStepThreeForm() {
   const router = useRouter();
 
   const {
-  register,
-  control,
-  handleSubmit,
-  getValues,
-  formState: { errors, isSubmitting },
-} = useForm<SupplierAdminStepThreeValues>({
-  resolver: zodResolver(supplierAdminStepThreeSchema),
-  defaultValues: {
-    lands: [emptyLand()],
-  },
-  mode: "onSubmit",
-});
+    register,
+    control,
+    handleSubmit,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<SupplierAdminStepThreeValues>({
+    resolver: zodResolver(supplierAdminStepThreeSchema),
+    defaultValues: {
+      lands: [createEmptyLand(1)],
+    },
+    mode: "onSubmit",
+  });
 
-const { fields, append, remove, replace } = useFieldArray({
-  control,
-  name: "lands",
-});
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: "lands",
+  });
 
   useEffect(() => {
     try {
@@ -65,7 +85,7 @@ const { fields, append, remove, replace } = useFieldArray({
       const parsed = JSON.parse(raw) as SupplierAdminDraft;
       if (!parsed.step3?.lands?.length) return;
 
-      replace(parsed.step3.lands);
+      replace(normalizeLands(parsed.step3.lands));
     } catch {
       // ignore malformed draft
     }
@@ -76,42 +96,38 @@ const { fields, append, remove, replace } = useFieldArray({
 
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        parsed = JSON.parse(raw) as SupplierAdminDraft;
-      }
+      if (raw) parsed = JSON.parse(raw) as SupplierAdminDraft;
     } catch {
       parsed = {};
     }
 
-    const nextDraft: SupplierAdminDraft = {
-      ...parsed,
-      step3: values,
-      updatedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(nextDraft));
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        ...parsed,
+        step3: {
+          lands: normalizeLands(values.lands),
+        },
+        updatedAt: new Date().toISOString(),
+      })
+    );
   };
 
   const handleBack = () => {
     saveDraft(getValues());
-    router.push("/register/supplier/admin/step-2");
-  };
-
-  const handleSaveProgress = () => {
-    saveDraft(getValues());
-    toast.success("Draft step 3 berhasil disimpan.");
+    router.push(supplierGuidedRoutes.step2);
   };
 
   const onSubmit = async (values: SupplierAdminStepThreeValues) => {
     saveDraft(values);
-    toast.success("Step 3 saved. Lanjut ke Step 4.");
-    router.push("/register/supplier/admin/step-4");
+    toast.success("Data lahan tersimpan.");
+    router.push(supplierGuidedRoutes.step4);
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {errors.lands?.message && (
-        <div className="rounded-xl border border-error/15 bg-error-container px-4 py-3 text-sm font-medium text-on-error-container">
+        <div className="rounded-2xl border border-error/15 bg-error-container px-4 py-3 text-sm font-medium text-on-error-container">
           {errors.lands.message}
         </div>
       )}
@@ -120,294 +136,191 @@ const { fields, append, remove, replace } = useFieldArray({
         const landErrors = errors.lands?.[index];
 
         return (
-          <div
+          <section
             key={field.id}
-            className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-8 shadow-sm transition-shadow hover:shadow-md"
+            className="rounded-[2rem] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm md:p-8"
           >
-            <div className="mb-8 flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-container/20 text-primary">
-                  <span className="font-headline text-lg font-bold">
-                    {index + 1}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-on-surface">
-                    Land Parcel #{index + 1}
-                  </h3>
-                  <p className="text-sm text-on-surface-variant">
-                    {getValues(`lands.${index}.status_aktif`) === "aktif"
-                      ? "Active Record"
-                      : "Inactive Record"}
-                  </p>
-                </div>
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+                  Data lahan {index + 1}
+                </p>
+                <h2 className="mt-2 font-headline text-2xl font-bold text-on-surface">
+                  Informasi lahan
+                </h2>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (fields.length === 1) {
-                      toast.error("Minimal harus ada satu data lahan.");
-                      return;
-                    }
-                    remove(index);
-                  }}
-                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-surface-container-low hover:text-error"
-                >
-                  <Trash2 className="h-5 w-5" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (fields.length === 1) {
+                    toast.error("Minimal harus ada satu data lahan.");
+                    return;
+                  }
+                  remove(index);
+                }}
+                className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-4 py-2.5 text-sm font-semibold text-on-surface transition hover:bg-surface-container-high"
+              >
+                <Trash2 className="h-4 w-4" />
+                Hapus
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-x-12 gap-y-6 md:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Land Name
-                </label>
-                <input
-                  type="text"
-                  {...register(`lands.${index}.nama_lahan` as const)}
-                  className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                />
-                {landErrors?.nama_lahan && (
-                  <p className="text-sm font-medium text-error">
-                    {landErrors.nama_lahan.message}
-                  </p>
-                )}
-              </div>
+            <div className="mb-6 rounded-2xl bg-surface-container-low p-4 text-sm leading-7 text-on-surface-variant">
+              Nama kebun tidak ditampilkan ke user. Sistem akan tetap menyimpan penanda internal lahan secara otomatis.
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Owner Name
-                </label>
+            <div className="grid gap-6 md:grid-cols-2">
+              <input type="hidden" {...register(`lands.${index}.nama_lahan` as const)} />
+
+              <div>
+                <Label text="Nama pemilik / pengelola lahan" required />
                 <input
                   type="text"
                   {...register(`lands.${index}.nama_pemilik` as const)}
-                  className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
+                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
-                {landErrors?.nama_pemilik && (
-                  <p className="text-sm font-medium text-error">
-                    {landErrors.nama_pemilik.message}
-                  </p>
-                )}
+                {landErrors?.nama_pemilik && <p className="mt-2 text-sm font-medium text-error">{landErrors.nama_pemilik.message}</p>}
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Phone
-                </label>
+              <div>
+                <Label text="Nomor HP aktif" required />
                 <input
                   type="tel"
                   {...register(`lands.${index}.no_hp` as const)}
-                  className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
+                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
-                {landErrors?.no_hp && (
-                  <p className="text-sm font-medium text-error">
-                    {landErrors.no_hp.message}
-                  </p>
-                )}
+                {landErrors?.no_hp && <p className="mt-2 text-sm font-medium text-error">{landErrors.no_hp.message}</p>}
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Ownership Type
-                </label>
+              <div className="md:col-span-2">
+                <Label text="Alamat lahan" required />
+                <textarea
+                  rows={4}
+                  {...register(`lands.${index}.alamat_lahan` as const)}
+                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {landErrors?.alamat_lahan && <p className="mt-2 text-sm font-medium text-error">{landErrors.alamat_lahan.message}</p>}
+              </div>
+
+              <div>
+                <Label text="Desa / Kelurahan" required />
+                <input
+                  type="text"
+                  {...register(`lands.${index}.desa` as const)}
+                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {landErrors?.desa && <p className="mt-2 text-sm font-medium text-error">{landErrors.desa.message}</p>}
+              </div>
+
+              <div>
+                <Label text="Kecamatan" required />
+                <input
+                  type="text"
+                  {...register(`lands.${index}.kecamatan` as const)}
+                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {landErrors?.kecamatan && <p className="mt-2 text-sm font-medium text-error">{landErrors.kecamatan.message}</p>}
+              </div>
+
+              <div>
+                <Label text="Kabupaten / Kota" required />
+                <input
+                  type="text"
+                  {...register(`lands.${index}.kabupaten` as const)}
+                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {landErrors?.kabupaten && <p className="mt-2 text-sm font-medium text-error">{landErrors.kabupaten.message}</p>}
+              </div>
+
+              <div>
+                <Label text="Provinsi" required />
+                <input
+                  type="text"
+                  {...register(`lands.${index}.provinsi` as const)}
+                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {landErrors?.provinsi && <p className="mt-2 text-sm font-medium text-error">{landErrors.provinsi.message}</p>}
+              </div>
+
+              <div>
+                <Label text="Status kepemilikan" required />
                 <select
                   {...register(`lands.${index}.kepemilikan` as const)}
-                  className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
+                  className="w-full appearance-none rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="">Pilih</option>
-                  <option value="milik_sendiri">Milik Sendiri</option>
+                  <option value="milik_sendiri">Milik sendiri</option>
                   <option value="sewa">Sewa</option>
-                  <option value="kerjasama">Kerjasama</option>
+                  <option value="kerjasama">Kerja sama</option>
                   <option value="lainnya">Lainnya</option>
                 </select>
-                {landErrors?.kepemilikan && (
-                  <p className="text-sm font-medium text-error">
-                    {landErrors.kepemilikan.message}
-                  </p>
-                )}
+                {landErrors?.kepemilikan && <p className="mt-2 text-sm font-medium text-error">{landErrors.kepemilikan.message}</p>}
               </div>
 
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Full Address
-                </label>
-                <textarea
-                  rows={2}
-                  {...register(`lands.${index}.alamat_lahan` as const)}
-                  className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
+              <div>
+                <Label text="Luas lahan (m²)" required />
+                <input
+                  type="number"
+                  min="1"
+                  inputMode="numeric"
+                  {...register(`lands.${index}.luas_lahan_m2` as const, { valueAsNumber: true })}
+                  className="w-full rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
-                {landErrors?.alamat_lahan && (
-                  <p className="text-sm font-medium text-error">
-                    {landErrors.alamat_lahan.message}
-                  </p>
-                )}
+                {landErrors?.luas_lahan_m2 && <p className="mt-2 text-sm font-medium text-error">{landErrors.luas_lahan_m2.message}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 md:col-span-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Village
-                  </label>
-                  <input
-                    type="text"
-                    {...register(`lands.${index}.desa` as const)}
-                    className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                  />
-                  {landErrors?.desa && (
-                    <p className="text-sm font-medium text-error">
-                      {landErrors.desa.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    District
-                  </label>
-                  <input
-                    type="text"
-                    {...register(`lands.${index}.kecamatan` as const)}
-                    className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                  />
-                  {landErrors?.kecamatan && (
-                    <p className="text-sm font-medium text-error">
-                      {landErrors.kecamatan.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Regency
-                  </label>
-                  <input
-                    type="text"
-                    {...register(`lands.${index}.kabupaten` as const)}
-                    className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                  />
-                  {landErrors?.kabupaten && (
-                    <p className="text-sm font-medium text-error">
-                      {landErrors.kabupaten.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    Province
-                  </label>
-                  <input
-                    type="text"
-                    {...register(`lands.${index}.provinsi` as const)}
-                    className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                  />
-                  {landErrors?.provinsi && (
-                    <p className="text-sm font-medium text-error">
-                      {landErrors.provinsi.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Land Area (m2)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    {...register(`lands.${index}.luas_lahan_m2` as const, {
-                      setValueAs: (value) => {
-                        if (value === "" || value === null || value === undefined) {
-                          return NaN;
-                        }
-                        return Number(value);
-                      },
-                    })}
-                    className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 pr-12 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
-                    m²
-                  </span>
-                </div>
-                {landErrors?.luas_lahan_m2 && (
-                  <p className="text-sm font-medium text-error">
-                    {landErrors.luas_lahan_m2.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                  Active Status
-                </label>
+              <div>
+                <Label text="Status lahan" required />
                 <select
                   {...register(`lands.${index}.status_aktif` as const)}
-                  className="w-full rounded-xl border-none bg-surface-container-low px-4 py-3 transition-all focus:ring-2 focus:ring-primary-fixed-dim"
+                  className="w-full appearance-none rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="">Pilih</option>
                   <option value="aktif">Aktif</option>
-                  <option value="nonaktif">Nonaktif</option>
+                  <option value="tidak_aktif">Tidak aktif</option>
                 </select>
-                {landErrors?.status_aktif && (
-                  <p className="text-sm font-medium text-error">
-                    {landErrors.status_aktif.message}
-                  </p>
-                )}
+                {landErrors?.status_aktif && <p className="mt-2 text-sm font-medium text-error">{landErrors.status_aktif.message}</p>}
               </div>
             </div>
-          </div>
+          </section>
         );
       })}
 
       <button
         type="button"
-        onClick={() => append(emptyLand())}
-        className="flex w-full items-center justify-center gap-4 rounded-xl border-2 border-dashed border-outline-variant/30 bg-surface-container-low/30 p-8 text-slate-500 transition-all hover:border-primary hover:text-primary"
+        onClick={() => append(createEmptyLand(fields.length + 1))}
+        className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-5 py-3 font-bold text-on-surface transition hover:bg-surface-container-high"
       >
-        <PlusCircle className="h-5 w-5" />
-        <span className="font-bold tracking-tight">Add Another Land Parcel</span>
+        <PlusCircle className="h-4 w-4" />
+        Tambah lahan
       </button>
 
-      <div className="mt-12 flex items-center justify-between">
+      <div className="flex flex-col gap-4 border-t border-outline-variant/15 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={handleBack}
-          className="flex items-center gap-2 rounded-xl px-6 py-3 font-bold text-slate-600 transition-colors hover:bg-surface-container-low"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-6 py-3.5 font-bold text-on-surface transition hover:bg-surface-container-high"
         >
-          Back to Personal Details
+          <ArrowLeft className="h-4 w-4" />
+          Kembali
         </button>
 
-        <div className="flex gap-4">
-          <button
-            type="button"
-            onClick={handleSaveProgress}
-            className="rounded-xl border-2 border-primary/20 px-8 py-3 font-bold text-primary transition-colors hover:bg-primary/5"
-          >
-            Save Progress
-          </button>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="signature-gradient flex items-center gap-2 rounded-xl px-10 py-3 font-bold text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                Continue to Payout Info
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="signature-gradient inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Menyimpan...
+            </>
+          ) : (
+            <>
+              Lanjut ke pencairan
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
+        </button>
       </div>
     </form>
   );

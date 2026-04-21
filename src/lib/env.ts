@@ -14,6 +14,8 @@ export const env = {
   AUTH_LOGOUT_PATH:
     process.env.NEXT_PUBLIC_AUTH_LOGOUT_PATH || "/api/auth/logout",
 
+  ADMIN_SUPPLIERS_PATH:
+    process.env.NEXT_PUBLIC_ADMIN_SUPPLIERS_PATH || "/api/admin/suppliers",
   ADMIN_SUPPLIERS_PENDING_PATH:
     process.env.NEXT_PUBLIC_ADMIN_SUPPLIERS_PENDING_PATH ||
     "/api/admin/suppliers/pending",
@@ -23,4 +25,8 @@ export const env = {
   ADMIN_SUPPLIER_REJECT_PATH_TEMPLATE:
     process.env.NEXT_PUBLIC_ADMIN_SUPPLIER_REJECT_PATH_TEMPLATE ||
     "/api/admin/suppliers/{id}/reject",
+  ADMIN_BOUNTIES_PATH:
+    process.env.NEXT_PUBLIC_ADMIN_BOUNTIES_PATH || "/api/admin/bounties",
+  SUPPLIER_BOUNTIES_PATH:
+    process.env.NEXT_PUBLIC_SUPPLIER_BOUNTIES_PATH || "/api/supplier/bounties",
 };

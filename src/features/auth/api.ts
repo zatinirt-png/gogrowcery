@@ -2,6 +2,7 @@ import axios from "axios";
 import { apiClient } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import type {
+  AdminCreateSupplierPayload,
   LoginPayload,
   LoginResponse,
   MeResponse,
@@ -88,6 +89,18 @@ export async function registerSupplier(payload: RegisterSupplierPayload) {
   try {
     const { data } = await apiClient.post<RegisterResponse>(
       env.AUTH_REGISTER_SUPPLIER_PATH,
+      payload
+    );
+    return data;
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
+export async function createAdminSupplier(payload: AdminCreateSupplierPayload) {
+  try {
+    const { data } = await apiClient.post<RegisterResponse>(
+      env.ADMIN_SUPPLIERS_PATH,
       payload
     );
     return data;
