@@ -65,6 +65,59 @@ function normalizePendingSuppliers(payload: unknown): PendingSupplierRecord[] {
   return [];
 }
 
+function normalizeSupplierRecord(payload: unknown): PendingSupplierRecord | null {
+  if (!payload || typeof payload !== "object") return null;
+
+  if (Array.isArray(payload)) {
+    return payload[0] && typeof payload[0] === "object"
+      ? (payload[0] as PendingSupplierRecord)
+      : null;
+  }
+
+  const data = payload as Record<string, unknown>;
+
+  const nestedData =
+    data.data && typeof data.data === "object" && !Array.isArray(data.data)
+      ? (data.data as Record<string, unknown>)
+      : undefined;
+
+  const deeperData =
+    nestedData?.data &&
+    typeof nestedData.data === "object" &&
+    !Array.isArray(nestedData.data)
+      ? (nestedData.data as Record<string, unknown>)
+      : undefined;
+
+  const candidateObjects = [
+    data.supplier,
+    data.record,
+    data.item,
+    data.result,
+    data.user,
+    data.data,
+    nestedData?.supplier,
+    nestedData?.record,
+    nestedData?.item,
+    nestedData?.result,
+    nestedData?.user,
+    nestedData,
+    deeperData?.supplier,
+    deeperData?.record,
+    deeperData?.item,
+    deeperData?.result,
+    deeperData,
+    data,
+  ];
+
+  for (const candidate of candidateObjects) {
+    if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+      return candidate as PendingSupplierRecord;
+    }
+  }
+
+  return null;
+}
+
 function appendFormValue(formData: FormData, key: string, value: unknown) {
   if (value === undefined || value === null) return;
 
@@ -266,6 +319,32 @@ export async function getPendingSuppliers() {
   }
 }
 
+export async function getAdminSupplierDetail(id: number | string) {
+  const safeId = encodeURIComponent(String(id));
+
+  const endpoints = [
+    `${env.ADMIN_SUPPLIERS_PATH}/${safeId}`,
+    `${env.ADMIN_SUPPLIERS_PATH}/${safeId}/detail`,
+    `${env.ADMIN_SUPPLIERS_PATH}?id=${safeId}`,
+    `${env.ADMIN_SUPPLIERS_PATH}?supplier_id=${safeId}`,
+  ];
+
+  let lastError: unknown = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const { data } = await apiClient.get(endpoint);
+      const normalized = normalizeSupplierRecord(data);
+
+      if (normalized) return normalized;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  extractApiError(lastError);
+}
+
 export async function approveSupplier(id: number | string) {
   try {
     const { data } = await apiClient.patch(
@@ -278,14 +357,31 @@ export async function approveSupplier(id: number | string) {
   }
 }
 
-export async function rejectSupplier(id: number | string) {
+export async function rejectSupplier(
+  id: number | string,
+  reason = "Ditolak oleh admin setelah review data supplier."
+) {
+  const path = resolveTemplatePath(env.ADMIN_SUPPLIER_REJECT_PATH_TEMPLATE, id);
+  const payload = {
+    rejection_reason: reason,
+    reason,
+  };
+
   try {
-    const { data } = await apiClient.patch(
-      resolveTemplatePath(env.ADMIN_SUPPLIER_REJECT_PATH_TEMPLATE, id)
-    );
+    const { data } = await apiClient.patch(path, payload);
 
     return data;
-  } catch (error) {
-    extractApiError(error);
+  } catch (firstError) {
+    if (axios.isAxiosError(firstError)) {
+      try {
+        const { data } = await apiClient.patch(path);
+
+        return data;
+      } catch (secondError) {
+        extractApiError(secondError);
+      }
+    }
+
+    extractApiError(firstError);
   }
 }

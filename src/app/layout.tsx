@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
 import { Toaster } from "sonner";
+import GlobalLoadingOverlay from "@/components/common/global-loading-overlay";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,8 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${manrope.variable}`}>
-      <body className="min-h-screen bg-background text-on-surface font-sans antialiased">
+      <body className="min-h-screen bg-background font-sans text-on-surface antialiased">
         {children}
+        <GlobalLoadingOverlay />
         <Toaster richColors position="top-right" />
       </body>
     </html>

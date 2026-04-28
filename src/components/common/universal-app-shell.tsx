@@ -39,6 +39,7 @@ type NavItem = {
   href: string;
   icon: LucideIcon;
   match?: (pathname: string) => boolean;
+  children?: NavItem[];
 };
 
 type UniversalAppShellProps = {
@@ -96,22 +97,36 @@ function getRoleNav(role?: string | null): NavItem[] {
         match: (pathname) => pathname === "/admin",
       },
       {
-        label: "Data Supplier",
+        label: "Supplier",
         href: "/admin/suppliers",
         icon: Users,
         match: (pathname) => pathname.startsWith("/admin/suppliers"),
+        children: [
+          {
+            label: "Supplier Directory",
+            href: "/admin/suppliers",
+            icon: Users,
+            match: (pathname) => pathname === "/admin/suppliers",
+          },
+          {
+            label: "Pending Applications",
+            href: "/admin/suppliers/pending",
+            icon: ClipboardList,
+            match: (pathname) => pathname.startsWith("/admin/suppliers/pending"),
+          },
+          {
+            label: "Add Supplier",
+            href: "/admin/suppliers/add",
+            icon: UserPlus,
+            match: (pathname) => pathname === "/admin/suppliers/add",
+          },
+        ],
       },
       {
         label: "Bounty",
         href: "/admin/bounties",
         icon: HandCoins,
         match: (pathname) => pathname.startsWith("/admin/bounties"),
-      },
-      {
-        label: "Tambah Supplier",
-        href: "/admin/suppliers/add",
-        icon: UserPlus,
-        match: (pathname) => pathname === "/admin/suppliers/add",
       },
     ];
   }
@@ -167,6 +182,17 @@ function NavSection({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const [manualOpenItems, setManualOpenItems] = useState<Record<string, boolean>>(
+    {}
+  );
+
+  const toggleDropdown = (key: string, defaultOpen: boolean) => {
+    setManualOpenItems((current) => ({
+      ...current,
+      [key]: !(current[key] ?? defaultOpen),
+    }));
+  };
+
   return (
     <div>
       {title ? (
@@ -178,11 +204,84 @@ function NavSection({
       <div className="space-y-1.5">
         {items.map((item) => {
           const Icon = item.icon;
-          const active = item.match ? item.match(pathname) : false;
+          const hasChildren = Boolean(item.children?.length);
+
+          const childActive = item.children?.some((child) =>
+            child.match ? child.match(pathname) : pathname === child.href
+          );
+
+          const active = item.match
+            ? item.match(pathname)
+            : Boolean(childActive);
+
+          const dropdownKey = `${title || "global"}-${item.href}-${item.label}`;
+          const isDropdownOpen = hasChildren
+            ? manualOpenItems[dropdownKey] ?? Boolean(active || childActive)
+            : false;
+
+          if (hasChildren) {
+            return (
+              <div key={dropdownKey}>
+                <button
+                  type="button"
+                  onClick={() => toggleDropdown(dropdownKey, Boolean(active))}
+                  className={cn(
+                    "group flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition-all",
+                    active
+                      ? "signature-gradient text-white shadow-sm"
+                      : "bg-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </span>
+
+                  <ChevronRight
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-transform",
+                      isDropdownOpen && "rotate-90"
+                    )}
+                  />
+                </button>
+
+                {isDropdownOpen ? (
+                  <div className="ml-5 mt-1.5 space-y-1 border-l border-outline-variant/15 pl-3">
+                    {item.children?.map((child) => {
+                      const ChildIcon = child.icon;
+                      const childIsActive = child.match
+                        ? child.match(pathname)
+                        : pathname === child.href;
+
+                      return (
+                        <Link
+                          key={`child-${child.href}-${child.label}`}
+                          href={child.href}
+                          onClick={onNavigate}
+                          className={cn(
+                            "flex items-center justify-between rounded-2xl px-3 py-2.5 text-xs font-bold transition-all",
+                            childIsActive
+                              ? "bg-primary/10 text-primary"
+                              : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+                          )}
+                        >
+                          <span className="flex min-w-0 items-center gap-2.5">
+                            <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{child.label}</span>
+                          </span>
+                          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          }
 
           return (
             <Link
-              key={`${title || "global"}-${item.href}-${item.label}`}
+              key={dropdownKey}
               href={item.href}
               onClick={onNavigate}
               className={cn(
@@ -192,13 +291,13 @@ function NavSection({
                   : "bg-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
               )}
             >
-              <span className="flex items-center gap-3">
-                <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
+              <span className="flex min-w-0 items-center gap-3">
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
               </span>
               <ChevronRight
                 className={cn(
-                  "h-4 w-4 transition-transform",
+                  "h-4 w-4 shrink-0 transition-transform",
                   !active && "group-hover:translate-x-0.5"
                 )}
               />
@@ -235,6 +334,8 @@ export default function UniversalAppShell({
 
   const roleNav = useMemo(() => getRoleNav(role), [role]);
   const roleLabel = getRoleLabel(role);
+  const normalizedRole = (role || "").toLowerCase();
+  const isAdmin = normalizedRole === "admin";
   const isLoggedIn = Boolean(role);
   const profileName = user?.name?.trim() || roleLabel;
   const profileEmail =
@@ -328,11 +429,13 @@ export default function UniversalAppShell({
       </div>
 
       <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-4 py-6">
-        <NavSection items={globalNav} pathname={pathname} onNavigate={closeMenus} />
+        {!isAdmin ? (
+          <NavSection items={globalNav} pathname={pathname} onNavigate={closeMenus} />
+        ) : null}
 
         {roleNav.length > 0 ? (
           <NavSection
-            title="Fitur Sesuai Role"
+            title={isAdmin ? undefined : "Admin Menu"}
             items={roleNav}
             pathname={pathname}
             onNavigate={closeMenus}
