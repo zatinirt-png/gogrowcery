@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Trash2, Info, Package2 } from "lucide-react";
+import { Info, Loader2, Package2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createBounty } from "@/features/bounty/api";
 import {
@@ -32,6 +33,7 @@ function FieldError({ message }: { message?: string }) {
 }
 
 export default function BountyCreateForm() {
+  const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
@@ -84,6 +86,8 @@ export default function BountyCreateForm() {
         deadline_at: "",
         items: [{ ...emptyItem }],
       });
+      router.push("/admin/bounties");
+      router.refresh();
     } catch (error) {
       const validationErrors = getBountyValidationErrors(error);
 
@@ -116,12 +120,18 @@ export default function BountyCreateForm() {
       }
 
       Object.entries(validationErrors).forEach(([field, message]) => {
-        const itemMatch = field.match(/^items\.(\d+)\.(item_name|target_quantity|unit|notes)$/);
+        const itemMatch = field.match(
+          /^items\.(\d+)\.(item_name|target_quantity|unit|notes)$/
+        );
 
         if (!itemMatch) return;
 
         const index = Number(itemMatch[1]);
-        const key = itemMatch[2] as "item_name" | "target_quantity" | "unit" | "notes";
+        const key = itemMatch[2] as
+          | "item_name"
+          | "target_quantity"
+          | "unit"
+          | "notes";
 
         setError(`items.${index}.${key}`, {
           type: "server",
@@ -136,27 +146,28 @@ export default function BountyCreateForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      <section className="rounded-[28px] border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm md:p-8">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
+      <section className="rounded-[28px] border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-6 md:p-8">
+        <div className="mb-6 flex items-start gap-3 sm:mb-8">
+          <div className="shrink-0 rounded-2xl bg-primary/10 p-3 text-primary">
             <Info className="h-5 w-5" />
           </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
               Section 1
             </p>
-            <h2 className="font-headline text-2xl font-extrabold text-on-surface">
+            <h2 className="font-headline text-xl font-extrabold text-on-surface sm:text-2xl">
               Basic Information
             </h2>
           </div>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 md:gap-x-8 md:gap-y-6">
-          <div className="space-y-2">
+        <div className="grid gap-4 sm:gap-5 md:grid-cols-2 md:gap-x-8 md:gap-y-6">
+          <div className="space-y-2 min-w-0">
             <label
               htmlFor="client_name"
-              className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant"
+              className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant"
             >
               Client Name
             </label>
@@ -165,15 +176,15 @@ export default function BountyCreateForm() {
               type="text"
               placeholder="e.g. PT Segar Jaya"
               {...register("client_name")}
-              className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+              className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 text-sm outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
             />
             <FieldError message={errors.client_name?.message} />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <label
               htmlFor="title"
-              className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant"
+              className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant"
             >
               Bounty Title
             </label>
@@ -182,15 +193,15 @@ export default function BountyCreateForm() {
               type="text"
               placeholder="Kebutuhan Sayuran Minggu Ini"
               {...register("title")}
-              className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+              className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 text-sm outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
             />
             <FieldError message={errors.title?.message} />
           </div>
 
-          <div className="space-y-2 md:max-w-md">
+          <div className="space-y-2 w-full md:max-w-md">
             <label
               htmlFor="deadline_at"
-              className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant"
+              className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant"
             >
               Deadline
             </label>
@@ -198,15 +209,15 @@ export default function BountyCreateForm() {
               id="deadline_at"
               type="datetime-local"
               {...register("deadline_at")}
-              className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+              className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
             />
             <FieldError message={errors.deadline_at?.message} />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
+          <div className="space-y-2 md:col-span-2 min-w-0">
             <label
               htmlFor="description"
-              className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant"
+              className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant"
             >
               Description / Notes
             </label>
@@ -215,24 +226,25 @@ export default function BountyCreateForm() {
               rows={4}
               placeholder="Tambahkan konteks kebutuhan, kualitas, atau catatan khusus bounty ini..."
               {...register("description")}
-              className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+              className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 text-sm outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
             />
             <FieldError message={errors.description?.message} />
           </div>
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-outline-variant/15 bg-surface-container-low p-6 shadow-sm md:p-8">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+      <section className="rounded-[28px] border border-outline-variant/15 bg-surface-container-low p-4 shadow-sm sm:p-6 md:p-8">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 rounded-2xl bg-primary/10 p-3 text-primary">
               <Package2 className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                 Section 2
               </p>
-              <h2 className="font-headline text-2xl font-extrabold text-on-surface">
+              <h2 className="font-headline text-xl font-extrabold text-on-surface sm:text-2xl">
                 Bounty Items
               </h2>
             </div>
@@ -241,10 +253,10 @@ export default function BountyCreateForm() {
           <button
             type="button"
             onClick={() => append({ ...emptyItem })}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-surface-container-lowest px-4 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-white"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-surface-container-lowest px-4 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-white sm:w-auto"
           >
-            <Plus className="h-4 w-4" />
-            Add Item
+            <Plus className="h-4 w-4 shrink-0" />
+            <span>Add Item</span>
           </button>
         </div>
 
@@ -252,14 +264,14 @@ export default function BountyCreateForm() {
           {fields.map((field, index) => (
             <div
               key={field.id}
-              className="rounded-3xl border border-outline-variant/10 bg-surface-container-lowest p-4 shadow-sm"
+              className="rounded-3xl border border-outline-variant/10 bg-surface-container-lowest p-4 shadow-sm sm:p-5"
             >
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Item {index + 1}
                   </p>
-                  <p className="mt-1 text-sm text-on-surface-variant">
+                  <p className="mt-1 text-sm leading-6 text-on-surface-variant">
                     Isi nama item, target quantity, satuan, dan catatan opsional.
                   </p>
                 </div>
@@ -268,7 +280,7 @@ export default function BountyCreateForm() {
                   type="button"
                   onClick={() => remove(index)}
                   disabled={fields.length === 1}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl text-error transition hover:bg-error-container/60 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center self-start rounded-2xl text-error transition hover:bg-error-container/60 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label={`Hapus item ${index + 1}`}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -276,21 +288,21 @@ export default function BountyCreateForm() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-12">
-                <div className="space-y-2 md:col-span-4">
-                  <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                <div className="space-y-2 md:col-span-4 min-w-0">
+                  <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Item Name
                   </label>
                   <input
                     type="text"
                     placeholder="Bayam"
                     {...register(`items.${index}.item_name`)}
-                    className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 text-sm outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                   />
                   <FieldError message={errors.items?.[index]?.item_name?.message} />
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                <div className="space-y-2 md:col-span-2 min-w-0">
+                  <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Quantity
                   </label>
                   <input
@@ -301,20 +313,20 @@ export default function BountyCreateForm() {
                     {...register(`items.${index}.target_quantity`, {
                       valueAsNumber: true,
                     })}
-                    className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 text-sm outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                   />
                   <FieldError
                     message={errors.items?.[index]?.target_quantity?.message}
                   />
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                <div className="space-y-2 md:col-span-2 min-w-0">
+                  <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Unit
                   </label>
                   <select
                     {...register(`items.${index}.unit`)}
-                    className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                   >
                     {unitOptions.map((option) => (
                       <option key={option} value={option}>
@@ -325,15 +337,15 @@ export default function BountyCreateForm() {
                   <FieldError message={errors.items?.[index]?.unit?.message} />
                 </div>
 
-                <div className="space-y-2 md:col-span-4">
-                  <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                <div className="space-y-2 md:col-span-4 min-w-0">
+                  <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Notes
                   </label>
                   <input
                     type="text"
                     placeholder="Pilih yang segar"
                     {...register(`items.${index}.notes`)}
-                    className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                    className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3.5 text-sm outline-none transition placeholder:text-outline focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                   />
                   <FieldError message={errors.items?.[index]?.notes?.message} />
                 </div>
@@ -354,12 +366,12 @@ export default function BountyCreateForm() {
       ) : null}
 
       <footer className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="max-w-2xl rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-on-primary-container">
-          Draft mode di desain belum disambungkan ke backend. Tombol publish akan
-          langsung mengirim bounty ke endpoint admin.
+        <div className="w-full max-w-2xl rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm leading-6 text-on-primary-container">
+          Tombol publish langsung mengirim bounty ke endpoint admin. Setelah berhasil,
+          halaman akan diarahkan ke daftar bounty live dari API.
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <button
             type="button"
             onClick={() =>
@@ -371,7 +383,7 @@ export default function BountyCreateForm() {
                 items: [{ ...emptyItem }],
               })
             }
-            className="inline-flex items-center justify-center rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-5 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low"
+            className="inline-flex w-full items-center justify-center rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-5 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low sm:w-auto"
           >
             Reset Form
           </button>
@@ -379,7 +391,7 @@ export default function BountyCreateForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="signature-gradient inline-flex min-w-[190px] items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
+            className="signature-gradient inline-flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:min-w-[190px]"
           >
             {isSubmitting ? (
               <>

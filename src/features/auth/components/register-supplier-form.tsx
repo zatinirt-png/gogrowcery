@@ -38,7 +38,7 @@ export default function RegisterSupplierAdminShell({
 }: RegisterSupplierAdminShellProps) {
   return (
     <div className="flex min-h-screen bg-background text-on-surface">
-      <aside className="hidden h-screen w-80 shrink-0 border-r border-outline-variant/15 bg-surface-container-lowest md:flex md:flex-col">
+      <aside className="hidden h-screen w-80 shrink-0 border-r border-outline-variant/15 bg-surface-container-lowest lg:flex lg:flex-col">
         <div className="border-b border-outline-variant/15 px-6 py-6">
           <div className="flex items-center gap-3">
             <div className="signature-gradient flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-sm">
@@ -78,7 +78,9 @@ export default function RegisterSupplierAdminShell({
                   <div
                     className={[
                       "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
-                      isActive ? "bg-white/20 text-white" : "bg-surface-container-low text-on-surface",
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-surface-container-low text-on-surface",
                     ].join(" ")}
                   >
                     {index + 1}
@@ -100,20 +102,58 @@ export default function RegisterSupplierAdminShell({
         </div>
       </aside>
 
-      <main className="flex flex-1 flex-col bg-background">
-        <div className="border-b border-outline-variant/15 bg-surface-container-lowest px-6 py-5 md:px-10">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
-            {stepLabel}
-          </p>
-          <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
-            {title}
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-on-surface-variant">
-            {description}
-          </p>
+      <main className="flex min-h-screen flex-1 flex-col bg-background">
+        <div className="border-b border-outline-variant/15 bg-surface-container-lowest px-4 py-4 sm:px-6 lg:px-10 lg:py-5">
+          <div className="mx-auto max-w-5xl lg:max-w-none">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+              {stepLabel}
+            </p>
+            <h1 className="mt-2 font-headline text-2xl font-extrabold tracking-tight text-on-surface sm:text-3xl md:text-4xl">
+              {title}
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-on-surface-variant">
+              {description}
+            </p>
+
+            <div className="mt-5 lg:hidden">
+              <div className="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+                <div className="flex min-w-max gap-2 pb-1">
+                  {steps.map((step, index) => {
+                    const Icon = step.icon;
+                    const isActive = step.key === activeStep;
+
+                    return (
+                      <div
+                        key={step.key}
+                        className={[
+                          "flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold whitespace-nowrap",
+                          isActive
+                            ? "border-primary/20 bg-primary/10 text-primary"
+                            : "border-outline-variant/15 bg-surface-container-low text-on-surface-variant",
+                        ].join(" ")}
+                      >
+                        <span
+                          className={[
+                            "flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold",
+                            isActive
+                              ? "bg-primary text-white"
+                              : "bg-surface-container-lowest text-on-surface",
+                          ].join(" ")}
+                        >
+                          {index + 1}
+                        </span>
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{step.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex-1 bg-surface-container-low px-6 py-8 md:px-10 md:py-10">
+        <div className="flex-1 bg-surface-container-low px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
           <div className="mx-auto max-w-5xl">{children}</div>
         </div>
       </main>

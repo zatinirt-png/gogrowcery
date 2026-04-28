@@ -186,135 +186,139 @@ export default function AdminSuppliersDirectoryView() {
       title="Suppliers"
       description="Halaman ini sekarang tidak lagi memakai mock. Sumber live yang dipakai adalah pending supplier API, sehingga overview tetap konsisten dengan endpoint yang memang tersedia saat ini."
       actions={
-        <div className="flex flex-wrap gap-3">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
           <button
             type="button"
             onClick={load}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70 sm:w-auto"
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
             ) : (
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-4 w-4 shrink-0" />
             )}
-            Refresh
+            <span>Refresh</span>
           </button>
 
           <Link
             href="/admin/suppliers/pending"
-            className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 sm:w-auto"
           >
-            <Clock3 className="h-4 w-4" />
-            Pending Review
+            <Clock3 className="h-4 w-4 shrink-0" />
+            <span>Pending Review</span>
           </Link>
 
           <Link
             href="/admin/suppliers/add"
-            className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low sm:w-auto"
           >
-            <UserPlus className="h-4 w-4" />
-            Add Supplier
+            <UserPlus className="h-4 w-4 shrink-0" />
+            <span>Add Supplier</span>
           </Link>
         </div>
       }
     >
-      <div className="grid gap-6">
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+      <div className="grid gap-5 sm:gap-6">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+          <article className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Pending Queue
                 </p>
-                <p className="mt-3 font-headline text-3xl font-extrabold">
+                <p className="mt-3 break-words font-headline text-3xl font-extrabold leading-none text-on-surface">
                   {isLoading ? "-" : pendingCount}
                 </p>
-                <p className="mt-2 text-sm text-on-surface-variant">
+                <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                   Total data live yang berhasil dibaca dari endpoint pending.
                 </p>
               </div>
-              <div className="rounded-2xl bg-surface-container-low p-3 text-primary">
+
+              <div className="shrink-0 rounded-2xl bg-surface-container-low p-3 text-primary">
                 <Users className="h-5 w-5" />
               </div>
             </div>
           </article>
 
-          <article className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+          <article className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Contact Coverage
                 </p>
-                <p className="mt-3 font-headline text-3xl font-extrabold">
+                <p className="mt-3 break-words font-headline text-3xl font-extrabold leading-none text-on-surface">
                   {isLoading ? "-" : withContactCount}
                 </p>
-                <p className="mt-2 text-sm text-on-surface-variant">
+                <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                   Record yang memiliki email atau nomor telepon.
                 </p>
               </div>
-              <div className="rounded-2xl bg-surface-container-low p-3 text-primary">
+
+              <div className="shrink-0 rounded-2xl bg-surface-container-low p-3 text-primary">
                 <ShieldCheck className="h-5 w-5" />
               </div>
             </div>
           </article>
 
-          <article className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+          <article className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Location Coverage
                 </p>
-                <p className="mt-3 font-headline text-3xl font-extrabold">
+                <p className="mt-3 break-words font-headline text-3xl font-extrabold leading-none text-on-surface">
                   {isLoading ? "-" : withLocationCount}
                 </p>
-                <p className="mt-2 text-sm text-on-surface-variant">
+                <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                   Record yang memiliki desa, kecamatan, atau kabupaten.
                 </p>
               </div>
-              <div className="rounded-2xl bg-surface-container-low p-3 text-primary">
+
+              <div className="shrink-0 rounded-2xl bg-surface-container-low p-3 text-primary">
                 <MapPinned className="h-5 w-5" />
               </div>
             </div>
           </article>
 
-          <article className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+          <article className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Latest Entry
                 </p>
-                <p className="mt-3 font-headline text-xl font-extrabold leading-tight">
+                <p className="mt-3 break-words font-headline text-lg font-extrabold leading-snug text-on-surface sm:text-xl">
                   {isLoading ? "-" : latestCreatedAt}
                 </p>
-                <p className="mt-2 text-sm text-on-surface-variant">
+                <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                   Referensi entri terbaru dari data pending yang diterima.
                 </p>
               </div>
-              <div className="rounded-2xl bg-surface-container-low p-3 text-primary">
+
+              <div className="shrink-0 rounded-2xl bg-surface-container-low p-3 text-primary">
                 <DatabaseZap className="h-5 w-5" />
               </div>
             </div>
           </article>
         </section>
 
-        <section className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+        <section className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                 Live Supplier Overview
               </p>
-              <h2 className="mt-2 font-headline text-2xl font-extrabold">
+              <h2 className="mt-2 break-words font-headline text-xl font-extrabold text-on-surface sm:text-2xl">
                 Recent supplier applications
               </h2>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                 Halaman ini menampilkan data supplier live dari pending queue.
                 Tidak ada lagi row contoh atau data palsu.
               </p>
             </div>
 
-            <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
-              <div className="relative min-w-[280px]">
+            <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[320px]">
+              <div className="relative w-full">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
                 <input
                   type="text"
@@ -327,15 +331,15 @@ export default function AdminSuppliersDirectoryView() {
 
               <Link
                 href="/admin/suppliers/pending"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95"
               >
-                Open Review Queue
-                <ArrowRight className="h-4 w-4" />
+                <span>Open Review Queue</span>
+                <ArrowRight className="h-4 w-4 shrink-0" />
               </Link>
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4 text-sm text-on-surface-variant">
+          <div className="mt-5 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4 text-sm leading-6 text-on-surface-variant">
             Last refresh:{" "}
             <span className="font-bold text-on-surface">
               {lastLoadedAt ? formatDate(lastLoadedAt) : "-"}
@@ -344,128 +348,209 @@ export default function AdminSuppliersDirectoryView() {
 
           {isLoading ? (
             <div className="mt-6 flex items-center gap-3 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-5 text-sm text-on-surface-variant">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Memuat supplier live...
+              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              <span>Memuat supplier live...</span>
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-outline-variant/30 bg-surface-container-low p-6 text-sm text-on-surface-variant">
+            <div className="mt-6 rounded-2xl border border-dashed border-outline-variant/30 bg-surface-container-low p-6 text-sm leading-6 text-on-surface-variant">
               {items.length === 0
                 ? "Belum ada data pending yang bisa dibaca dari endpoint."
                 : "Tidak ada hasil yang cocok dengan pencarian."}
             </div>
           ) : (
-            <div className="mt-6 overflow-hidden rounded-3xl border border-outline-variant/15">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left">
-                  <thead className="bg-surface-container-low">
-                    <tr>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                        Supplier
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                        Username
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                        Contact
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                        Location
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                        Status
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                        Source
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                        Created At
-                      </th>
-                    </tr>
-                  </thead>
+            <>
+              <div className="mt-6 space-y-4 md:hidden">
+                {filteredItems.map((item) => {
+                  const status = getStatus(item);
 
-                  <tbody className="divide-y divide-outline-variant/10">
-                    {filteredItems.map((item) => {
-                      const status = getStatus(item);
+                  return (
+                    <article
+                      key={String(item.id)}
+                      className="rounded-3xl border border-outline-variant/15 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words font-bold text-on-surface">
+                            {getDisplayName(item)}
+                          </p>
+                          <p className="mt-1 break-all text-sm text-on-surface-variant">
+                            @{getUsername(item)}
+                          </p>
+                        </div>
 
-                      return (
-                        <tr key={String(item.id)} className="bg-white">
-                          <td className="px-5 py-4 align-top">
-                            <p className="font-bold text-on-surface">
-                              {getDisplayName(item)}
-                            </p>
-                          </td>
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold capitalize ${pillClass(
+                            status
+                          )}`}
+                        >
+                          {status}
+                        </span>
+                      </div>
 
-                          <td className="px-5 py-4 align-top text-sm text-on-surface-variant">
-                            {getUsername(item)}
-                          </td>
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl bg-surface-container-low p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+                            Contact
+                          </p>
+                          <p className="mt-2 break-all text-sm font-medium text-on-surface">
+                            {getEmail(item)}
+                          </p>
+                          <p className="mt-1 break-words text-sm text-on-surface-variant">
+                            {getPhone(item)}
+                          </p>
+                        </div>
 
-                          <td className="px-5 py-4 align-top">
-                            <div className="space-y-1 text-sm">
-                              <p className="text-on-surface">{getEmail(item)}</p>
-                              <p className="text-on-surface-variant">
-                                {getPhone(item)}
-                              </p>
-                            </div>
-                          </td>
-
-                          <td className="px-5 py-4 align-top text-sm text-on-surface-variant">
+                        <div className="rounded-2xl bg-surface-container-low p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+                            Location
+                          </p>
+                          <p className="mt-2 break-words text-sm text-on-surface">
                             {getLocation(item)}
-                          </td>
+                          </p>
+                        </div>
 
-                          <td className="px-5 py-4 align-top">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold capitalize ${pillClass(
-                                status
-                              )}`}
-                            >
-                              {status}
-                            </span>
-                          </td>
-
-                          <td className="px-5 py-4 align-top text-sm text-on-surface-variant">
+                        <div className="rounded-2xl bg-surface-container-low p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+                            Source
+                          </p>
+                          <p className="mt-2 break-words text-sm text-on-surface">
                             {getSource(item)}
-                          </td>
+                          </p>
+                        </div>
 
-                          <td className="px-5 py-4 align-top text-sm text-on-surface-variant">
+                        <div className="rounded-2xl bg-surface-container-low p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+                            Created At
+                          </p>
+                          <p className="mt-2 break-words text-sm text-on-surface">
                             {formatDate(getCreatedAt(item))}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </p>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
-            </div>
+
+              <div className="mt-6 hidden overflow-hidden rounded-3xl border border-outline-variant/15 md:block">
+                <div className="overflow-x-auto">
+                  <table className="min-w-[860px] text-left">
+                    <thead className="bg-surface-container-low">
+                      <tr>
+                        <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                          Supplier
+                        </th>
+                        <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                          Username
+                        </th>
+                        <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                          Contact
+                        </th>
+                        <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                          Location
+                        </th>
+                        <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                          Status
+                        </th>
+                        <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                          Source
+                        </th>
+                        <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                          Created At
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-outline-variant/10">
+                      {filteredItems.map((item) => {
+                        const status = getStatus(item);
+
+                        return (
+                          <tr key={String(item.id)} className="bg-white">
+                            <td className="px-5 py-4 align-top">
+                              <p className="break-words font-bold text-on-surface">
+                                {getDisplayName(item)}
+                              </p>
+                            </td>
+
+                            <td className="px-5 py-4 align-top text-sm text-on-surface-variant">
+                              <span className="break-all">{getUsername(item)}</span>
+                            </td>
+
+                            <td className="px-5 py-4 align-top">
+                              <div className="space-y-1 text-sm">
+                                <p className="break-all text-on-surface">
+                                  {getEmail(item)}
+                                </p>
+                                <p className="break-words text-on-surface-variant">
+                                  {getPhone(item)}
+                                </p>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 align-top text-sm text-on-surface-variant">
+                              <span className="break-words">
+                                {getLocation(item)}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4 align-top">
+                              <span
+                                className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold capitalize ${pillClass(
+                                  status
+                                )}`}
+                              >
+                                {status}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4 align-top text-sm text-on-surface-variant">
+                              <span className="break-words">{getSource(item)}</span>
+                            </td>
+
+                            <td className="px-5 py-4 align-top text-sm text-on-surface-variant">
+                              <span className="break-words">
+                                {formatDate(getCreatedAt(item))}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </section>
 
-        <section className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm">
-          <div className="grid gap-4 lg:grid-cols-3">
+        <section className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-6">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <article className="rounded-2xl border border-outline-variant/15 bg-surface-container-low p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
                 Current scope
               </p>
-              <p className="mt-2 text-sm leading-7 text-on-surface-variant">
+              <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                 Directory ini sengaja menampilkan live scope yang tersedia dari
                 pending supplier API agar tetap sesuai backend yang ada.
               </p>
             </article>
 
             <article className="rounded-2xl border border-outline-variant/15 bg-surface-container-low p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
                 Review actions
               </p>
-              <p className="mt-2 text-sm leading-7 text-on-surface-variant">
+              <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                 Approve dan reject tetap dilakukan dari halaman{" "}
                 <span className="font-bold text-on-surface">Pending Review</span>.
               </p>
             </article>
 
             <article className="rounded-2xl border border-outline-variant/15 bg-surface-container-low p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
                 Next backend enhancement
               </p>
-              <p className="mt-2 text-sm leading-7 text-on-surface-variant">
+              <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                 Jika nanti backend menambah endpoint list supplier admin, halaman
                 ini bisa diperluas menjadi directory penuh tanpa perlu mock lagi.
               </p>

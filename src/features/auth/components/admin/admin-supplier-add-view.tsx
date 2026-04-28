@@ -29,19 +29,11 @@ import AdminShell from "./admin-shell";
 
 const DRAFT_KEY = "admin-supplier-add-draft-v1";
 
-const bahasaOptions = ["Indonesia", "Sunda", "Jawa", "Inggris"];
-
 const jenisKelaminOptions = [
   { value: "laki_laki", label: "Laki-laki" },
   { value: "perempuan", label: "Perempuan" },
 ];
 
-const statusPerkawinanOptions = [
-  { value: "belum_kawin", label: "Belum Kawin" },
-  { value: "kawin", label: "Kawin" },
-  { value: "cerai_hidup", label: "Cerai Hidup" },
-  { value: "cerai_mati", label: "Cerai Mati" },
-];
 
 const kepemilikanOptions = [
   { value: "milik_sendiri", label: "Milik Sendiri" },
@@ -69,13 +61,11 @@ function createDefaultValues(): AdminCreateSupplierFormValues {
     tempat_lahir: "",
     tanggal_lahir: "",
     jenis_kelamin: "laki_laki",
-    status_perkawinan: "kawin",
     no_hp: "",
     alamat_domisili: "",
     desa: "",
     kecamatan: "",
     kabupaten: "",
-    bahasa_komunikasi: ["Indonesia"],
     lands: [
       {
         nama_lahan: "",
@@ -131,7 +121,6 @@ export default function AdminSupplierAddView() {
   });
 
   const payoutMethod = watch("payout.payout_method");
-  const selectedLanguages = watch("bahasa_komunikasi");
 
   const sectionLinks = useMemo(
     () => [
@@ -156,10 +145,6 @@ export default function AdminSupplierAddView() {
       reset({
         ...defaults,
         ...parsed,
-        bahasa_komunikasi:
-          parsed.bahasa_komunikasi && parsed.bahasa_komunikasi.length > 0
-            ? parsed.bahasa_komunikasi
-            : defaults.bahasa_komunikasi,
         lands:
           parsed.lands && parsed.lands.length > 0 ? parsed.lands : defaults.lands,
         payout: {
@@ -199,13 +184,11 @@ export default function AdminSupplierAddView() {
     tempat_lahir: values.tempat_lahir.trim(),
     tanggal_lahir: values.tanggal_lahir,
     jenis_kelamin: values.jenis_kelamin,
-    status_perkawinan: values.status_perkawinan,
     no_hp: values.no_hp.trim(),
     alamat_domisili: values.alamat_domisili.trim(),
     desa: values.desa.trim(),
     kecamatan: values.kecamatan.trim(),
     kabupaten: values.kabupaten.trim(),
-    bahasa_komunikasi: values.bahasa_komunikasi,
     lands: values.lands.map((land) => ({
       nama_lahan: land.nama_lahan.trim(),
       nama_pemilik: land.nama_pemilik.trim(),
@@ -264,42 +247,42 @@ export default function AdminSupplierAddView() {
   return (
     <AdminShell
       title="Add Supplier"
-      description="Form admin ini sekarang live. Save Draft menyimpan ke browser, sedangkan Finalize Entry akan POST ke /api/admin/suppliers sesuai payload Postman."
+      description="Form admin ini live. Save Draft menyimpan ke browser, sedangkan Finalize Entry akan POST ke endpoint admin supplier."
       actions={
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70"
-          >
-            <Save className="h-4 w-4" />
-            Save Draft
-          </button>
+      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:justify-end">
+        <button
+          type="button"
+          onClick={handleSaveDraft}
+          disabled={isSubmitting}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70 md:w-auto"
+        >
+          <Save className="h-4 w-4 shrink-0" />
+          Save Draft
+        </button>
 
-          <button
-            type="submit"
-            form="admin-supplier-form"
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:opacity-70"
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            Finalize Entry
-          </button>
-        </div>
-      }
+        <button
+          type="submit"
+          form="admin-supplier-form"
+          disabled={isSubmitting}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:opacity-70 md:w-auto"
+        >
+          {isSubmitting ? (
+            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+          ) : (
+            <Send className="h-4 w-4 shrink-0" />
+          )}
+          Finalize Entry
+        </button>
+      </div>
+    }
     >
       <form
         id="admin-supplier-form"
         onSubmit={handleSubmit(onSubmit)}
-        className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]"
+        className="grid gap-6 xl:grid-cols-[minmax(0,280px)_minmax(0,1fr)]"
       >
-        <aside className="h-fit rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+        <aside className="h-fit rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
             Form Sections
           </p>
 
@@ -319,9 +302,9 @@ export default function AdminSupplierAddView() {
             ))}
           </div>
 
-          <div className="mt-6 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4">
+          <div className="mt-5 rounded-2xl border border-outline-variant/15 bg-surface-container-low p-4">
             <p className="text-sm font-bold text-on-surface">Payload Status</p>
-            <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+            <p className="mt-2 text-sm leading-6 text-on-surface-variant">
               Finalize Entry akan mengirim payload admin supplier: biodata,
               lands[], dan payout transfer / ewallet.
             </p>
@@ -337,45 +320,45 @@ export default function AdminSupplierAddView() {
         <div className="grid gap-6">
           <section
             id="account-info"
-            className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm"
+            className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-6"
           >
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-primary/10 p-3 text-primary">
                 <UserPlus className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Section 1
                 </p>
-                <h2 className="font-headline text-2xl font-extrabold text-on-surface">
+                <h2 className="font-headline text-xl font-extrabold text-on-surface sm:text-2xl">
                   Account Info
                 </h2>
               </div>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Supplier Name
                 </label>
                 <input
                   type="text"
                   placeholder="Tani Jaya"
                   {...register("name")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.name?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Email (optional)
                 </label>
                 <input
                   type="email"
                   placeholder="supplier@example.com"
                   {...register("email")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.email?.message} />
               </div>
@@ -384,81 +367,81 @@ export default function AdminSupplierAddView() {
 
           <section
             id="personal-info"
-            className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm"
+            className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-6"
           >
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-secondary-container/40 p-3 text-secondary">
                 <Waypoints className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Section 2
                 </p>
-                <h2 className="font-headline text-2xl font-extrabold text-on-surface">
+                <h2 className="font-headline text-xl font-extrabold text-on-surface sm:text-2xl">
                   Personal Details
                 </h2>
               </div>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Nama Lengkap
                 </label>
                 <input
                   type="text"
                   placeholder="Siti Rahayu"
                   {...register("nama_lengkap")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.nama_lengkap?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   No KTP
                 </label>
                 <input
                   type="text"
                   placeholder="3271234567890002"
                   {...register("no_ktp")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.no_ktp?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Tempat Lahir
                 </label>
                 <input
                   type="text"
                   placeholder="Garut"
                   {...register("tempat_lahir")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.tempat_lahir?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Tanggal Lahir
                 </label>
                 <input
                   type="date"
                   {...register("tanggal_lahir")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.tanggal_lahir?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Jenis Kelamin
                 </label>
                 <select
                   {...register("jenis_kelamin")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 >
                   {jenisKelaminOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -469,135 +452,89 @@ export default function AdminSupplierAddView() {
                 <FieldError message={errors.jenis_kelamin?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Status Perkawinan
-                </label>
-                <select
-                  {...register("status_perkawinan")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                >
-                  {statusPerkawinanOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <FieldError message={errors.status_perkawinan?.message} />
-              </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   No HP
                 </label>
                 <input
                   type="text"
                   placeholder="08129999888"
                   {...register("no_hp")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.no_hp?.message} />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 md:col-span-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Alamat Domisili
                 </label>
                 <textarea
                   rows={3}
                   placeholder="Jl. Sawah No. 3"
                   {...register("alamat_domisili")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.alamat_domisili?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Desa
                 </label>
                 <input
                   type="text"
                   placeholder="Sukamaju"
                   {...register("desa")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.desa?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Kecamatan
                 </label>
                 <input
                   type="text"
                   placeholder="Tarogong"
                   {...register("kecamatan")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.kecamatan?.message} />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="space-y-2 min-w-0 md:col-span-2">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Kabupaten
                 </label>
                 <input
                   type="text"
                   placeholder="Garut"
                   {...register("kabupaten")}
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                  className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                 />
                 <FieldError message={errors.kabupaten?.message} />
               </div>
 
-              <div className="space-y-3 md:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Bahasa Komunikasi
-                </label>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {bahasaOptions.map((bahasa) => {
-                    const checked = selectedLanguages?.includes(bahasa);
-
-                    return (
-                      <label
-                        key={bahasa}
-                        className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                          checked
-                            ? "border-primary/30 bg-primary/5 text-primary"
-                            : "border-outline-variant/15 bg-surface-container-low text-on-surface"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          value={bahasa}
-                          {...register("bahasa_komunikasi")}
-                          className="h-4 w-4 rounded border-outline"
-                        />
-                        {bahasa}
-                      </label>
-                    );
-                  })}
-                </div>
-                <FieldError message={errors.bahasa_komunikasi?.message} />
-              </div>
             </div>
           </section>
 
           <section
             id="land-info"
-            className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm"
+            className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-6"
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-primary/10 p-3 text-primary">
                   <LandPlot className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                     Section 3
                   </p>
-                  <h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
+                  <h2 className="mt-1 font-headline text-xl font-extrabold text-on-surface sm:text-2xl">
                     Land Records
                   </h2>
                 </div>
@@ -620,9 +557,9 @@ export default function AdminSupplierAddView() {
                     status_aktif: "aktif",
                   })
                 }
-                className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-lowest"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-lowest sm:w-auto"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 shrink-0" />
                 Add Land
               </button>
             </div>
@@ -631,11 +568,11 @@ export default function AdminSupplierAddView() {
               {fields.map((field, index) => (
                 <article
                   key={field.id}
-                  className="rounded-3xl border border-outline-variant/15 bg-surface-container-low p-5"
+                  className="rounded-3xl border border-outline-variant/15 bg-surface-container-low p-4 sm:p-5"
                 >
-                  <div className="mb-5 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Land Entry
                       </p>
                       <p className="mt-1 text-lg font-bold text-on-surface">
@@ -647,59 +584,59 @@ export default function AdminSupplierAddView() {
                       type="button"
                       onClick={() => remove(index)}
                       disabled={fields.length === 1}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-2 text-sm font-bold text-on-surface transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-2 text-sm font-bold text-on-surface transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 shrink-0" />
                       Remove
                     </button>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Nama Lahan
                       </label>
                       <input
                         type="text"
                         placeholder="Sawah Selatan"
                         {...register(`lands.${index}.nama_lahan`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError
                         message={errors.lands?.[index]?.nama_lahan?.message}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Nama Pemilik
                       </label>
                       <input
                         type="text"
                         placeholder="Siti Rahayu"
                         {...register(`lands.${index}.nama_pemilik`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError
                         message={errors.lands?.[index]?.nama_pemilik?.message}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         No HP Lahan
                       </label>
                       <input
                         type="text"
                         placeholder="08129999888"
                         {...register(`lands.${index}.no_hp`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError message={errors.lands?.[index]?.no_hp?.message} />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Luas Lahan (m2)
                       </label>
                       <input
@@ -709,93 +646,93 @@ export default function AdminSupplierAddView() {
                         {...register(`lands.${index}.luas_lahan_m2`, {
                           valueAsNumber: true,
                         })}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError
                         message={errors.lands?.[index]?.luas_lahan_m2?.message}
                       />
                     </div>
 
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 md:col-span-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Alamat Lahan
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="Jl. Sawah Blok B"
+                        placeholder="Jl. Sawah Barat Blok C"
                         {...register(`lands.${index}.alamat_lahan`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError
                         message={errors.lands?.[index]?.alamat_lahan?.message}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Desa
                       </label>
                       <input
                         type="text"
                         placeholder="Sukamaju"
                         {...register(`lands.${index}.desa`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError message={errors.lands?.[index]?.desa?.message} />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Kecamatan
                       </label>
                       <input
                         type="text"
                         placeholder="Tarogong"
                         {...register(`lands.${index}.kecamatan`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError
                         message={errors.lands?.[index]?.kecamatan?.message}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Kabupaten
                       </label>
                       <input
                         type="text"
                         placeholder="Garut"
                         {...register(`lands.${index}.kabupaten`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError
                         message={errors.lands?.[index]?.kabupaten?.message}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Provinsi
                       </label>
                       <input
                         type="text"
                         placeholder="Jawa Barat"
                         {...register(`lands.${index}.provinsi`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       />
                       <FieldError
                         message={errors.lands?.[index]?.provinsi?.message}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Kepemilikan
                       </label>
                       <select
                         {...register(`lands.${index}.kepemilikan`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       >
                         {kepemilikanOptions.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -808,13 +745,13 @@ export default function AdminSupplierAddView() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                    <div className="space-y-2 min-w-0">
+                      <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Status Aktif
                       </label>
                       <select
                         {...register(`lands.${index}.status_aktif`)}
-                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                        className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                       >
                         {statusAktifOptions.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -834,17 +771,17 @@ export default function AdminSupplierAddView() {
 
           <section
             id="payout-info"
-            className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-6 shadow-sm"
+            className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-6"
           >
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-primary/10 p-3 text-primary">
                 <CircleDollarSign className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Section 4
                 </p>
-                <h2 className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
+                <h2 className="mt-1 font-headline text-xl font-extrabold text-on-surface sm:text-2xl">
                   Payout Info
                 </h2>
               </div>
@@ -852,7 +789,7 @@ export default function AdminSupplierAddView() {
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                   Payout Method
                 </label>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -869,9 +806,9 @@ export default function AdminSupplierAddView() {
                         type="radio"
                         value={option.value}
                         {...register("payout.payout_method")}
-                        className="h-4 w-4"
+                        className="h-4 w-4 shrink-0"
                       />
-                      {option.label}
+                      <span className="break-words">{option.label}</span>
                     </label>
                   ))}
                 </div>
@@ -880,43 +817,43 @@ export default function AdminSupplierAddView() {
 
               {payoutMethod === "transfer" ? (
                 <>
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  <div className="space-y-2 min-w-0">
+                    <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                       Bank Name
                     </label>
                     <input
                       type="text"
                       placeholder="BCA"
                       {...register("payout.bank_name")}
-                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                     />
                     <FieldError message={errors.payout?.bank_name?.message} />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  <div className="space-y-2 min-w-0">
+                    <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                       Bank Account Number
                     </label>
                     <input
                       type="text"
                       placeholder="1234567890"
                       {...register("payout.bank_account_number")}
-                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                     />
                     <FieldError
                       message={errors.payout?.bank_account_number?.message}
                     />
                   </div>
 
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  <div className="space-y-2 md:col-span-2 min-w-0">
+                    <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                       Bank Account Name
                     </label>
                     <input
                       type="text"
                       placeholder="Siti Rahayu"
                       {...register("payout.bank_account_name")}
-                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                     />
                     <FieldError
                       message={errors.payout?.bank_account_name?.message}
@@ -925,43 +862,43 @@ export default function AdminSupplierAddView() {
                 </>
               ) : (
                 <>
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  <div className="space-y-2 min-w-0">
+                    <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                       E-wallet Name
                     </label>
                     <input
                       type="text"
                       placeholder="GoPay"
                       {...register("payout.ewallet_name")}
-                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                     />
                     <FieldError message={errors.payout?.ewallet_name?.message} />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  <div className="space-y-2 min-w-0">
+                    <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                       E-wallet Account Number
                     </label>
                     <input
                       type="text"
                       placeholder="08129999888"
                       {...register("payout.ewallet_account_number")}
-                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                     />
                     <FieldError
                       message={errors.payout?.ewallet_account_number?.message}
                     />
                   </div>
 
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                  <div className="space-y-2 md:col-span-2 min-w-0">
+                    <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                       E-wallet Account Name
                     </label>
                     <input
                       type="text"
                       placeholder="Siti Rahayu"
                       {...register("payout.ewallet_account_name")}
-                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                      className="w-full rounded-2xl border border-transparent bg-surface-container-low px-4 py-3 text-sm outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
                     />
                     <FieldError
                       message={errors.payout?.ewallet_account_name?.message}
@@ -971,20 +908,20 @@ export default function AdminSupplierAddView() {
               )}
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
                 onClick={handleSaveDraft}
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70 sm:w-auto"
               >
-                <Save className="h-4 w-4" />
+                <Save className="h-4 w-4 shrink-0" />
                 Save Draft
               </button>
 
               <Link
                 href="/admin/suppliers/pending"
-                className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 sm:w-auto"
               >
                 Review Pending Queue
               </Link>

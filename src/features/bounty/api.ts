@@ -2,6 +2,7 @@ import axios from "axios";
 import { apiClient } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import type {
+  AdminBountyRecord,
   CreateBountyPayload,
   CreateBountyResponse,
   SupplierBountyRecord,
@@ -9,20 +10,30 @@ import type {
 
 function extractApiError(error: unknown): never {
   if (axios.isAxiosError(error)) {
+    const validationErrors = error.response?.data?.errors;
+    const firstValidationError =
+      validationErrors && typeof validationErrors === "object"
+        ? Object.values(validationErrors as Record<string, string[] | string>)
+            .flat()
+            .find((message): message is string => typeof message === "string")
+        : undefined;
+
     const message =
+      firstValidationError ||
       error.response?.data?.message ||
       error.response?.data?.error ||
       error.message ||
       "Terjadi kesalahan pada server.";
+
     throw new Error(message);
   }
 
   throw new Error("Terjadi kesalahan yang tidak diketahui.");
 }
 
-function findFirstArray(value: unknown): SupplierBountyRecord[] {
+function findFirstArray<TRecord>(value: unknown): TRecord[] {
   if (Array.isArray(value)) {
-    return value as SupplierBountyRecord[];
+    return value as TRecord[];
   }
 
   if (!value || typeof value !== "object") {
@@ -45,7 +56,7 @@ function findFirstArray(value: unknown): SupplierBountyRecord[] {
     const candidate = record[key];
 
     if (Array.isArray(candidate)) {
-      return candidate as SupplierBountyRecord[];
+      return candidate as TRecord[];
     }
   }
 
@@ -53,7 +64,7 @@ function findFirstArray(value: unknown): SupplierBountyRecord[] {
     const candidate = record[key];
 
     if (candidate && typeof candidate === "object") {
-      const nested = findFirstArray(candidate);
+      const nested = findFirstArray<TRecord>(candidate);
       if (nested.length) {
         return nested;
       }
@@ -62,7 +73,7 @@ function findFirstArray(value: unknown): SupplierBountyRecord[] {
 
   for (const candidate of Object.values(record)) {
     if (candidate && typeof candidate === "object") {
-      const nested = findFirstArray(candidate);
+      const nested = findFirstArray<TRecord>(candidate);
       if (nested.length) {
         return nested;
       }
@@ -84,10 +95,19 @@ export async function createBounty(payload: CreateBountyPayload) {
   }
 }
 
+export async function getAdminBounties() {
+  try {
+    const { data } = await apiClient.get(env.ADMIN_BOUNTIES_PATH);
+    return findFirstArray<AdminBountyRecord>(data);
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
 export async function getSupplierBounties() {
   try {
     const { data } = await apiClient.get(env.SUPPLIER_BOUNTIES_PATH);
-    return findFirstArray(data);
+    return findFirstArray<SupplierBountyRecord>(data);
   } catch (error) {
     extractApiError(error);
   }

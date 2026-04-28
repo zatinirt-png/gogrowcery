@@ -56,19 +56,18 @@ export type RegisterSupplierPayload = {
   email?: string | null;
   password: string;
   password_confirmation?: string;
+  ktp_document?: File | Blob | null;
 
   nama_lengkap?: string;
   no_ktp?: string;
   tempat_lahir?: string;
   tanggal_lahir?: string;
   jenis_kelamin?: string;
-  status_perkawinan?: string;
   no_hp?: string;
   alamat_domisili?: string;
   desa?: string;
   kecamatan?: string;
   kabupaten?: string;
-  bahasa_komunikasi?: string[];
 
   lands?: SupplierLandPayload[];
   payout?: SupplierPayoutPayload;
@@ -83,13 +82,11 @@ export type AdminCreateSupplierPayload = {
   tempat_lahir?: string;
   tanggal_lahir?: string;
   jenis_kelamin?: string;
-  status_perkawinan?: string;
   no_hp?: string;
   alamat_domisili?: string;
   desa?: string;
   kecamatan?: string;
   kabupaten?: string;
-  bahasa_komunikasi?: string[];
 
   lands?: SupplierLandPayload[];
   payout?: SupplierPayoutPayload;

@@ -26,25 +26,40 @@ export type CreateBountyResponse = {
   [key: string]: unknown;
 };
 
-export type SupplierBountyItem = {
+export type BountyItemRecord = {
   id?: number | string;
   item_name?: string | null;
+  name?: string | null;
   target_quantity?: number | string | null;
+  quantity?: number | string | null;
+  qty?: number | string | null;
   unit?: string | null;
   notes?: string | null;
+  description?: string | null;
   [key: string]: unknown;
 };
 
-export type SupplierBountyRecord = {
+export type BountyRecord = {
   id?: number | string;
   code?: string | null;
+  bounty_code?: string | null;
   client_name?: string | null;
   title?: string | null;
   description?: string | null;
+  notes?: string | null;
   deadline_at?: string | null;
+  deadline?: string | null;
   status?: string | null;
-  items?: SupplierBountyItem[];
+  approval_status?: string | null;
+  publication_status?: string | null;
+  items?: BountyItemRecord[];
+  bounty_items?: BountyItemRecord[];
+  created_by?: unknown;
   created_at?: string | null;
   updated_at?: string | null;
   [key: string]: unknown;
 };
+
+export type AdminBountyRecord = BountyRecord;
+export type SupplierBountyRecord = BountyRecord;
+export type SupplierBountyItem = BountyItemRecord;

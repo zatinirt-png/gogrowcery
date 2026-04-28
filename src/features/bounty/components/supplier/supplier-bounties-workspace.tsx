@@ -10,7 +10,6 @@ import {
   Package2,
   RefreshCw,
   Search,
-  Sprout,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,12 +23,6 @@ import type {
   SupplierBountyRecord,
 } from "@/features/bounty/types";
 import SupplierShell from "./supplier-shell";
-
-function toRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
 
 function firstString(source: unknown, paths: string[], fallback = "-") {
   for (const path of paths) {
@@ -152,20 +145,6 @@ export default function SupplierBountiesWorkspace() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-
-  const loadUser = async () => {
-    try {
-      const meResponse = await getMe();
-      setUser(meResponse.user);
-    } catch (error) {
-      clearAuthSession();
-      toast.error(getAuthErrorMessage(error));
-      router.replace("/login");
-      router.refresh();
-    } finally {
-      setIsLoadingUser(false);
-    }
-  };
 
   const loadBounties = async () => {
     setIsLoadingBounties(true);
@@ -296,12 +275,12 @@ export default function SupplierBountiesWorkspace() {
   };
 
   const headerActions = (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
       <button
         type="button"
         onClick={loadBounties}
         disabled={isLoadingBounties}
-        className="inline-flex items-center gap-2 rounded-xl bg-surface-container-high px-5 py-2.5 text-sm font-semibold text-on-surface transition-all hover:bg-surface-container-highest disabled:opacity-70"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-high px-5 py-2.5 text-sm font-semibold text-on-surface transition-all hover:bg-surface-container-highest disabled:opacity-70 sm:w-auto"
       >
         {isLoadingBounties ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -323,59 +302,59 @@ export default function SupplierBountiesWorkspace() {
       user={user}
     >
       {isLoadingUser || isLoadingBounties ? (
-        <div className="rounded-xl bg-surface-container-lowest p-8 shadow-sm">
+        <div className="rounded-xl bg-surface-container-lowest p-6 shadow-sm sm:p-8">
           <div className="flex items-center gap-3 text-on-surface-variant">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span>Memuat dashboard supplier...</span>
           </div>
         </div>
       ) : (
-        <div className="grid gap-6">
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+        <div className="grid gap-5 sm:gap-6">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+            <article className="min-w-0 overflow-hidden rounded-xl bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                 Supplier
               </p>
-              <p className="mt-3 text-xl font-bold text-on-surface">
+              <p className="mt-3 break-words text-lg font-bold text-on-surface sm:text-xl">
                 {user?.name ?? "-"}
               </p>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-2 break-all text-sm text-on-surface-variant">
                 {user?.email ?? "Tanpa email"}
               </p>
             </article>
 
-            <article className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+            <article className="min-w-0 overflow-hidden rounded-xl bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                 Total Bounties
               </p>
-              <p className="mt-3 font-headline text-3xl font-extrabold text-on-surface">
+              <p className="mt-3 break-words font-headline text-3xl font-extrabold text-on-surface">
                 {stats.total}
               </p>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                 Semua bounty yang berhasil dibaca dari API supplier.
               </p>
             </article>
 
-            <article className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+            <article className="min-w-0 overflow-hidden rounded-xl bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                 Open / Available
               </p>
-              <p className="mt-3 font-headline text-3xl font-extrabold text-on-surface">
+              <p className="mt-3 break-words font-headline text-3xl font-extrabold text-on-surface">
                 {stats.open}
               </p>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                 Bounty dengan status open, available, atau published.
               </p>
             </article>
 
-            <article className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+            <article className="min-w-0 overflow-hidden rounded-xl bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                 Total Requested Items
               </p>
-              <p className="mt-3 font-headline text-3xl font-extrabold text-on-surface">
+              <p className="mt-3 break-words font-headline text-3xl font-extrabold text-on-surface">
                 {stats.totalItems}
               </p>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
                 Jumlah total item permintaan dari semua bounty.
               </p>
             </article>
@@ -384,12 +363,12 @@ export default function SupplierBountiesWorkspace() {
           {bountyError ? (
             <section className="rounded-xl bg-error-container p-5 shadow-sm">
               <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-5 w-5 text-on-error-container" />
-                <div>
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-on-error-container" />
+                <div className="min-w-0">
                   <p className="font-bold text-on-error-container">
                     Endpoint supplier bounty gagal dibaca
                   </p>
-                  <p className="mt-1 text-sm text-on-error-container">
+                  <p className="mt-1 break-words text-sm text-on-error-container">
                     {bountyError}
                   </p>
                 </div>
@@ -397,8 +376,8 @@ export default function SupplierBountiesWorkspace() {
             </section>
           ) : null}
 
-          <section className="relative z-0 rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-            <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+          <section className="relative z-0 rounded-xl bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+            <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
               Search Bounties
             </label>
 
@@ -414,12 +393,12 @@ export default function SupplierBountiesWorkspace() {
             </div>
           </section>
 
-          <section className="relative z-0 grid grid-cols-12 gap-6 items-start">
+          <section className="relative z-0 grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-start">
             <aside className="col-span-12 xl:col-span-4">
-              <div className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-                <div className="mb-5 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+              <div className="rounded-xl bg-surface-container-lowest p-4 shadow-sm sm:p-5">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                       Bounty List
                     </p>
                     <p className="mt-2 font-headline text-2xl font-extrabold text-on-surface">
@@ -437,7 +416,7 @@ export default function SupplierBountiesWorkspace() {
                     Tidak ada bounty yang cocok dengan pencarian.
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-[calc(100vh-20rem)] overflow-y-auto pr-1">
+                  <div className="max-h-[28rem] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-20rem)]">
                     {filteredBounties.map((bounty, index) => {
                       const status = resolveStatus(bounty);
                       const active = index === selectedIndex;
@@ -454,7 +433,7 @@ export default function SupplierBountiesWorkspace() {
                           }
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="rounded-full bg-surface-container px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
                                   {getBountyCode(bounty, index)}
@@ -469,10 +448,10 @@ export default function SupplierBountiesWorkspace() {
                                 </span>
                               </div>
 
-                              <p className="mt-3 truncate font-headline text-lg font-extrabold text-on-surface">
+                              <p className="mt-3 break-words font-headline text-lg font-extrabold text-on-surface">
                                 {getBountyTitle(bounty)}
                               </p>
-                              <p className="mt-1 text-sm text-on-surface-variant">
+                              <p className="mt-1 break-words text-sm text-on-surface-variant">
                                 {getBountyClient(bounty)}
                               </p>
                             </div>
@@ -480,12 +459,12 @@ export default function SupplierBountiesWorkspace() {
                             <ClipboardList className="mt-1 h-4 w-4 shrink-0 text-on-surface-variant" />
                           </div>
 
-                          <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                          <div className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
                             <div className="rounded-lg bg-surface-container p-3">
                               <p className="font-bold uppercase tracking-[0.12em] text-on-surface-variant">
                                 Deadline
                               </p>
-                              <p className="mt-1 font-semibold text-on-surface">
+                              <p className="mt-1 break-words font-semibold text-on-surface">
                                 {formatDateLabel(getDeadline(bounty))}
                               </p>
                             </div>
@@ -507,9 +486,9 @@ export default function SupplierBountiesWorkspace() {
               </div>
             </aside>
 
-            <div className="col-span-12 xl:col-span-8">
+            <div className="col-span-12 min-w-0 xl:col-span-8">
               {!selectedBounty ? (
-                <div className="rounded-xl bg-surface-container-lowest p-8 shadow-sm">
+                <div className="rounded-xl bg-surface-container-lowest p-6 shadow-sm sm:p-8">
                   <p className="font-headline text-2xl font-extrabold text-on-surface">
                     Select a bounty
                   </p>
@@ -519,7 +498,7 @@ export default function SupplierBountiesWorkspace() {
                 </div>
               ) : (
                 <div className="grid gap-6">
-                  <section className="rounded-xl bg-surface-container-lowest p-6 shadow-sm">
+                  <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-3">
@@ -532,41 +511,43 @@ export default function SupplierBountiesWorkspace() {
                           </span>
 
                           <span className="inline-flex items-center gap-2 rounded-full bg-surface-container-low px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-                            <CalendarDays className="h-3.5 w-3.5" />
-                            {formatDateLabel(getDeadline(selectedBounty))}
+                            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                            <span className="break-words">
+                              {formatDateLabel(getDeadline(selectedBounty))}
+                            </span>
                           </span>
                         </div>
 
-                        <h2 className="mt-4 font-headline text-3xl font-extrabold tracking-tight text-on-surface">
+                        <h2 className="mt-4 break-words font-headline text-2xl font-extrabold tracking-tight text-on-surface sm:text-3xl">
                           {getBountyTitle(selectedBounty)}
                         </h2>
 
-                        <p className="mt-2 text-sm font-semibold text-primary">
+                        <p className="mt-2 break-words text-sm font-semibold text-primary">
                           {getBountyClient(selectedBounty)}
                         </p>
 
-                        <p className="mt-4 text-sm leading-7 text-on-surface-variant">
+                        <p className="mt-4 break-words text-sm leading-7 text-on-surface-variant">
                           {getBountyDescription(selectedBounty)}
                         </p>
                       </div>
 
-                      <div className="min-w-[240px] rounded-xl bg-surface-container-low p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                      <div className="w-full rounded-xl bg-surface-container-low p-4 lg:w-[240px] lg:min-w-[240px]">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                           Summary
                         </p>
 
                         <div className="mt-4 grid gap-3">
                           <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-on-surface-variant">
                               Bounty Code
                             </p>
-                            <p className="mt-1 text-lg font-bold text-on-surface">
+                            <p className="mt-1 break-words text-lg font-bold text-on-surface">
                               {getBountyCode(selectedBounty, selectedIndex)}
                             </p>
                           </div>
 
                           <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-on-surface-variant">
                               Requested Items
                             </p>
                             <p className="mt-1 text-lg font-bold text-on-surface">
@@ -575,10 +556,10 @@ export default function SupplierBountiesWorkspace() {
                           </div>
 
                           <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                            <p className="text-xs font-bold uppercase tracking-[0.14em] text-on-surface-variant">
                               Deadline
                             </p>
-                            <p className="mt-1 text-sm font-medium text-on-surface">
+                            <p className="mt-1 break-words text-sm font-medium text-on-surface">
                               {formatDateLabel(getDeadline(selectedBounty))}
                             </p>
                           </div>
@@ -587,7 +568,7 @@ export default function SupplierBountiesWorkspace() {
                     </div>
                   </section>
 
-                  <section className="rounded-xl bg-surface-container-lowest p-6 shadow-sm">
+                  <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm sm:p-6">
                     <div className="mb-4 flex items-center gap-2">
                       <Package2 className="h-4 w-4 text-primary" />
                       <p className="text-sm font-bold text-on-surface">
@@ -596,19 +577,19 @@ export default function SupplierBountiesWorkspace() {
                     </div>
 
                     {getBountyItems(selectedBounty).length ? (
-                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {getBountyItems(selectedBounty).map((item, itemIndex) => (
                           <div
                             key={String(item.id ?? `${getItemName(item, itemIndex)}-${itemIndex}`)}
-                            className="rounded-xl bg-surface-container-low p-4"
+                            className="min-w-0 rounded-xl bg-surface-container-low p-4"
                           >
-                            <p className="text-sm font-bold text-on-surface">
+                            <p className="break-words text-sm font-bold text-on-surface">
                               {getItemName(item, itemIndex)}
                             </p>
-                            <p className="mt-2 text-sm text-on-surface-variant">
+                            <p className="mt-2 break-words text-sm text-on-surface-variant">
                               {getItemQty(item)}
                             </p>
-                            <p className="mt-2 text-xs text-on-surface-variant">
+                            <p className="mt-2 break-words text-xs leading-6 text-on-surface-variant">
                               {typeof item.notes === "string" && item.notes.trim()
                                 ? item.notes.trim()
                                 : "Tanpa catatan tambahan"}
@@ -623,41 +604,41 @@ export default function SupplierBountiesWorkspace() {
                     )}
                   </section>
 
-                  <section className="grid gap-4 md:grid-cols-3">
-                    <article className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+                  <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <article className="min-w-0 rounded-xl bg-surface-container-lowest p-5 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Viewer
                       </p>
                       <div className="mt-3 flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                           <UserRound className="h-5 w-5" />
                         </div>
-                        <div>
-                          <p className="font-bold text-on-surface">
+                        <div className="min-w-0">
+                          <p className="break-words font-bold text-on-surface">
                             {user?.name ?? "-"}
                           </p>
-                          <p className="text-sm text-on-surface-variant">
+                          <p className="break-words text-sm text-on-surface-variant">
                             {user?.role ?? "supplier"}
                           </p>
                         </div>
                       </div>
                     </article>
 
-                    <article className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+                    <article className="min-w-0 rounded-xl bg-surface-container-lowest p-5 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Current Limitation
                       </p>
-                      <p className="mt-3 text-sm leading-7 text-on-surface-variant">
+                      <p className="mt-3 break-words text-sm leading-7 text-on-surface-variant">
                         Dashboard ini sudah live untuk membaca bounty, tetapi belum
                         bisa apply atau take bounty karena endpoint-nya belum ada.
                       </p>
                     </article>
 
-                    <article className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
+                    <article className="min-w-0 rounded-xl bg-surface-container-lowest p-5 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Data Source
                       </p>
-                      <p className="mt-3 text-sm leading-7 text-on-surface-variant">
+                      <p className="mt-3 break-words text-sm leading-7 text-on-surface-variant">
                         Semua data list diambil dari endpoint supplier bounty yang
                         aktif di backend.
                       </p>

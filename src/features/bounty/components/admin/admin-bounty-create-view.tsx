@@ -12,7 +12,7 @@ export default function AdminBountyCreateView() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full bg-surface-container-high px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
             <span className="h-2 w-2 rounded-full bg-primary" />
-            Draft Mode
+            Live Publish
           </span>
 
           <Link
@@ -37,7 +37,7 @@ export default function AdminBountyCreateView() {
                   Admin Bounty Workflow
                 </p>
                 <h2 className="mt-1 font-headline text-2xl font-extrabold tracking-tight text-on-surface">
-                  Publish from admin first
+                  Publish bounty ke API admin
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
                   Form ini mengikuti desain create bounty yang Anda kirim dan

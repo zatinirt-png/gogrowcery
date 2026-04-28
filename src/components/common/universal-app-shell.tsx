@@ -226,7 +226,10 @@ export default function UniversalAppShell({
   const pathname = usePathname();
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
   const [openProfileMenu, setOpenProfileMenu] = useState(false);
-  const [profileMenuStyle, setProfileMenuStyle] = useState<{ left: number; top: number } | null>(null);
+  const [profileMenuStyle, setProfileMenuStyle] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileTriggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -234,7 +237,8 @@ export default function UniversalAppShell({
   const roleLabel = getRoleLabel(role);
   const isLoggedIn = Boolean(role);
   const profileName = user?.name?.trim() || roleLabel;
-  const profileEmail = user?.email?.trim() || (isLoggedIn ? `${roleLabel} aktif` : "Pengunjung");
+  const profileEmail =
+    user?.email?.trim() || (isLoggedIn ? `${roleLabel} aktif` : "Pengunjung");
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -259,7 +263,6 @@ export default function UniversalAppShell({
     };
   }, []);
 
-
   useLayoutEffect(() => {
     if (!openProfileMenu) return;
 
@@ -275,11 +278,17 @@ export default function UniversalAppShell({
 
       let left = triggerRect.left;
       const maxLeft = window.innerWidth - menuRect.width - viewportPadding;
-      left = Math.min(Math.max(left, viewportPadding), Math.max(viewportPadding, maxLeft));
+      left = Math.min(
+        Math.max(left, viewportPadding),
+        Math.max(viewportPadding, maxLeft)
+      );
 
       let top = triggerRect.top - menuRect.height - gap;
       if (top < viewportPadding) {
-        top = Math.min(triggerRect.bottom + gap, window.innerHeight - menuRect.height - viewportPadding);
+        top = Math.min(
+          triggerRect.bottom + gap,
+          window.innerHeight - menuRect.height - viewportPadding
+        );
       }
 
       setProfileMenuStyle({ left, top });
@@ -331,7 +340,7 @@ export default function UniversalAppShell({
         ) : null}
       </div>
 
-      <div className="relative shrink-0 border-t border-outline-variant/15 p-4 overflow-visible">
+      <div className="relative shrink-0 overflow-visible border-t border-outline-variant/15 p-4">
         {isLoggedIn ? (
           <>
             <button
@@ -350,7 +359,11 @@ export default function UniversalAppShell({
                   <div
                     ref={profileMenuRef}
                     className="fixed z-[200] w-[220px] rounded-3xl border border-outline-variant/15 bg-white p-4 shadow-[0_24px_60px_rgba(15,23,42,0.18)]"
-                    style={profileMenuStyle ? { left: profileMenuStyle.left, top: profileMenuStyle.top } : { left: -9999, top: -9999 }}
+                    style={
+                      profileMenuStyle
+                        ? { left: profileMenuStyle.left, top: profileMenuStyle.top }
+                        : { left: -9999, top: -9999 }
+                    }
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/8 text-primary">
@@ -449,8 +462,11 @@ export default function UniversalAppShell({
 
         {openMobileMenu ? (
           <div className="fixed inset-0 z-50 lg:hidden">
-            <div className="absolute inset-0 bg-black/30" onClick={() => setOpenMobileMenu(false)} />
-            <aside className="absolute left-0 top-0 h-full w-[86%] max-w-sm border-r border-outline-variant/15 bg-surface-container-lowest shadow-2xl">
+            <div
+              className="absolute inset-0 bg-black/30"
+              onClick={() => setOpenMobileMenu(false)}
+            />
+            <aside className="absolute left-0 top-0 h-full w-[88%] max-w-[22rem] border-r border-outline-variant/15 bg-surface-container-lowest shadow-2xl">
               <div className="flex items-center justify-end border-b border-outline-variant/15 px-4 py-3">
                 <button
                   type="button"
@@ -468,9 +484,9 @@ export default function UniversalAppShell({
         <div className="min-w-0 flex-1">
           {showHeader ? (
             <header className="sticky top-0 z-40 border-b border-outline-variant/15 bg-surface-container-lowest shadow-sm">
-              <div className="flex flex-col gap-4 px-5 py-4 md:px-8">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex min-w-0 items-start gap-3">
+              <div className="flex flex-col gap-4 px-4 py-4 sm:px-5 md:px-8">
+                <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
                     <button
                       type="button"
                       onClick={() => setOpenMobileMenu(true)}
@@ -479,26 +495,31 @@ export default function UniversalAppShell({
                       <Menu className="h-5 w-5" />
                     </button>
 
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       {title ? (
-                        <h1 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface md:text-3xl">
+                        <h1 className="font-headline text-xl font-extrabold tracking-tight text-on-surface sm:text-2xl md:text-3xl">
                           {title}
                         </h1>
                       ) : null}
+
                       {description ? (
-                        <p className="mt-1 max-w-3xl text-sm leading-7 text-on-surface-variant">
+                        <p className="mt-1 max-w-4xl text-sm leading-6 text-on-surface-variant md:leading-7">
                           {description}
                         </p>
                       ) : null}
                     </div>
                   </div>
 
-                  {actions ? <div className="shrink-0">{actions}</div> : null}
+                  {actions ? (
+                    <div className="w-full shrink-0 2xl:w-auto 2xl:max-w-[56rem] 2xl:self-start">
+                      {actions}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </header>
           ) : (
-            <div className="sticky top-0 z-40 border-b border-outline-variant/15 bg-surface-container-lowest px-5 py-4 lg:hidden">
+            <div className="sticky top-0 z-40 border-b border-outline-variant/15 bg-surface-container-lowest px-4 py-4 sm:px-5 lg:hidden">
               <button
                 type="button"
                 onClick={() => setOpenMobileMenu(true)}
@@ -509,7 +530,7 @@ export default function UniversalAppShell({
             </div>
           )}
 
-          <main className="px-5 py-6 md:px-8">{children}</main>
+          <main className="px-4 py-5 sm:px-5 md:px-8">{children}</main>
         </div>
       </div>
     </div>

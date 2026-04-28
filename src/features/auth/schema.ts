@@ -118,13 +118,11 @@ export const supplierAdminStepTwoSchema = z.object({
   tempat_lahir: z.string().trim().min(1, "Tempat lahir wajib diisi"),
   tanggal_lahir: z.string().min(1, "Tanggal lahir wajib diisi"),
   jenis_kelamin: z.string().min(1, "Jenis kelamin wajib dipilih"),
-  status_perkawinan: z.string().trim().optional(),
   no_hp: requiredPhoneSchema,
   alamat_domisili: z.string().trim().min(1, "Alamat domisili wajib diisi"),
   desa: z.string().trim().min(1, "Desa wajib diisi"),
   kecamatan: z.string().trim().min(1, "Kecamatan wajib diisi"),
   kabupaten: z.string().trim().min(1, "Kabupaten wajib diisi"),
-  bahasa_komunikasi: z.array(z.string()).optional(),
 });
 
 export const supplierLandSchema = z.object({
@@ -308,15 +306,11 @@ export const adminCreateSupplierSchema = z.object({
   tempat_lahir: z.string().trim().min(1, "Tempat lahir wajib diisi"),
   tanggal_lahir: z.string().min(1, "Tanggal lahir wajib diisi"),
   jenis_kelamin: z.string().min(1, "Jenis kelamin wajib dipilih"),
-  status_perkawinan: z.string().min(1, "Status perkawinan wajib dipilih"),
   no_hp: requiredPhoneSchema,
   alamat_domisili: z.string().trim().min(1, "Alamat domisili wajib diisi"),
   desa: z.string().trim().min(1, "Desa wajib diisi"),
   kecamatan: z.string().trim().min(1, "Kecamatan wajib diisi"),
   kabupaten: z.string().trim().min(1, "Kabupaten wajib diisi"),
-  bahasa_komunikasi: z
-    .array(z.string())
-    .min(1, "Pilih minimal satu bahasa komunikasi"),
   lands: z
     .array(supplierLandSchema)
     .min(1, "Minimal harus ada satu data lahan"),
