@@ -222,3 +222,4 @@ export async function getSupplierBountyDetail(id: number | string) {
     extractApiError(error);
   }
 }
+
