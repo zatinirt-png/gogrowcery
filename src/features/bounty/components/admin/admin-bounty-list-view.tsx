@@ -7,11 +7,13 @@ import {
   ArrowRight,
   CalendarDays,
   Clock3,
+  Eye,
   HandCoins,
   Loader2,
   Plus,
   RefreshCw,
   Search,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import AdminShell from "@/features/auth/components/admin/admin-shell";
@@ -80,17 +82,22 @@ function getBountyItems(record: AdminBountyRecord) {
   const nestedItems = getNestedValue(record, "data.items");
   if (Array.isArray(nestedItems)) return nestedItems as BountyItemRecord[];
 
+  const nestedBountyItems = getNestedValue(record, "data.bounty_items");
+  if (Array.isArray(nestedBountyItems)) return nestedBountyItems as BountyItemRecord[];
+
   return [];
 }
 
 function toAdminBountyRow(record: AdminBountyRecord, index: number): AdminBountyRow {
   const fallbackId = `bounty-${index + 1}`;
-  const id = firstString(record, ["id", "uuid", "bounty_id"], fallbackId);
+  const id = firstString(record, ["id", "uuid", "bounty_id", "data.id"], fallbackId);
+
   const code = firstString(
     record,
-    ["code", "bounty_code", "reference", "ref_code", "number", "id"],
+    ["code", "bounty_code", "reference", "ref_code", "number", "id", "data.id"],
     `BNT-${String(index + 1).padStart(3, "0")}`
   );
+
   const items = getBountyItems(record);
 
   return {
@@ -98,12 +105,20 @@ function toAdminBountyRow(record: AdminBountyRecord, index: number): AdminBounty
     code,
     clientName: firstString(
       record,
-      ["client_name", "client.name", "buyer.name", "customer.name"],
+      ["client_name", "client.name", "buyer.name", "customer.name", "data.client_name"],
       "Client tidak tersedia"
     ),
-    title: firstString(record, ["title", "name"], "Untitled Bounty"),
-    description: firstString(record, ["description", "notes"], "Tidak ada deskripsi."),
-    deadlineAt: firstString(record, ["deadline_at", "deadline", "deadlineAt"], "-"),
+    title: firstString(record, ["title", "name", "data.title"], "Untitled Bounty"),
+    description: firstString(
+      record,
+      ["description", "notes", "data.description"],
+      "Tidak ada deskripsi."
+    ),
+    deadlineAt: firstString(
+      record,
+      ["deadline_at", "deadline", "deadlineAt", "data.deadline_at"],
+      "-"
+    ),
     status: normalizeStatus(record),
     items,
     itemsCount: items.length,
@@ -112,7 +127,7 @@ function toAdminBountyRow(record: AdminBountyRecord, index: number): AdminBounty
       ["created_by.name", "creator.name", "admin.name", "user.name", "created_by"],
       "-"
     ),
-    createdAt: firstString(record, ["created_at", "createdAt"], "-"),
+    createdAt: firstString(record, ["created_at", "createdAt", "data.created_at"], "-"),
   };
 }
 
@@ -183,6 +198,7 @@ function getRemainingLabel(value: string, status: string) {
 
 function isUrgent(row: AdminBountyRow) {
   const normalizedStatus = row.status.toLowerCase();
+
   if (!["published", "available", "open", "active"].includes(normalizedStatus)) {
     return false;
   }
@@ -192,6 +208,13 @@ function isUrgent(row: AdminBountyRow) {
 
   const diffDays = (deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
   return diffDays > 0 && diffDays <= 3;
+}
+
+function getItemQuantityLabel(item: BountyItemRecord) {
+  const quantity = firstString(item, ["target_quantity", "quantity", "qty"], "-");
+  const unit = firstString(item, ["unit"], "");
+
+  return `${quantity}${unit ? ` ${unit}` : ""}`.trim();
 }
 
 export default function AdminBountyListView() {
@@ -220,6 +243,7 @@ export default function AdminBountyListView() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Gagal memuat data bounty admin.";
+
       setBounties([]);
       setErrorMessage(message);
       toast.error(message);
@@ -257,9 +281,7 @@ export default function AdminBountyListView() {
 
       const matchesSearch = !searchValue || haystack.includes(searchValue);
       const matchesStatus = status === "All" || row.status === status;
-      const matchesDeadline = deadlineDate
-        ? row.deadlineAt.startsWith(deadlineDate)
-        : true;
+      const matchesDeadline = deadlineDate ? row.deadlineAt.startsWith(deadlineDate) : true;
       const matchesClient = clientName === "All" || row.clientName === clientName;
 
       return matchesSearch && matchesStatus && matchesDeadline && matchesClient;
@@ -270,16 +292,24 @@ export default function AdminBountyListView() {
     const live = rows.filter((item) =>
       ["published", "available", "open", "active"].includes(item.status.toLowerCase())
     ).length;
+
     const draft = rows.filter((item) => item.status.toLowerCase() === "draft").length;
     const urgent = rows.filter(isUrgent).length;
 
     return { total: rows.length, live, draft, urgent };
   }, [rows]);
 
+  const resetFilters = () => {
+    setSearch("");
+    setStatus("All");
+    setDeadlineDate("");
+    setClientName("All");
+  };
+
   return (
     <AdminShell
-      title="Bounties"
-      description="Daftar bounty live dari API admin. Bounty yang dibuat admin akan tampil di sini setelah backend menyimpannya."
+      title="Bounty Directory"
+      description="Daftar bounty dari API admin. Klik salah satu bounty untuk membuka halaman detail."
       actions={
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
           <button
@@ -302,14 +332,6 @@ export default function AdminBountyListView() {
           >
             <Plus className="h-4 w-4 shrink-0" />
             <span>Create Bounty</span>
-          </Link>
-
-          <Link
-            href="/admin/bounties/create"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low sm:w-auto"
-          >
-            <span>Open Create Form</span>
-            <ArrowRight className="h-4 w-4 shrink-0" />
           </Link>
         </div>
       }
@@ -463,7 +485,7 @@ export default function AdminBountyListView() {
 
             <div className="min-w-0">
               <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Client Name
+                Client
               </label>
               <select
                 value={clientName}
@@ -471,9 +493,9 @@ export default function AdminBountyListView() {
                 className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
               >
                 <option value="All">All Clients</option>
-                {clientOptions.map((client) => (
-                  <option key={client} value={client}>
-                    {client}
+                {clientOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
                   </option>
                 ))}
               </select>
@@ -481,47 +503,67 @@ export default function AdminBountyListView() {
 
             <button
               type="button"
-              onClick={() => {
-                setSearch("");
-                setStatus("All");
-                setDeadlineDate("");
-                setClientName("All");
-              }}
-              className="inline-flex w-full items-center justify-center rounded-2xl bg-surface-container-high px-5 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-highest xl:w-auto"
+              onClick={resetFilters}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-high xl:w-auto"
             >
+              <XCircle className="h-4 w-4" />
               Reset
             </button>
           </div>
         </section>
 
-        <section className="rounded-3xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+        <section className="overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-outline-variant/10 px-5 py-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="font-headline text-xl font-extrabold text-on-surface">
+                Directory List
+              </p>
+              <p className="mt-1 text-sm text-on-surface-variant">
+                Klik card atau tombol detail untuk membuka halaman detail bounty.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+              {filteredRows.length} / {rows.length} bounty
+            </div>
+          </div>
+
           {isLoading ? (
-            <div className="flex items-center gap-3 p-6 text-on-surface-variant">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Memuat bounty dari API admin...</span>
+            <div className="p-5">
+              <div className="rounded-3xl bg-surface-container-low p-6">
+                <div className="flex items-center gap-3 text-on-surface-variant">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Memuat bounty admin...</span>
+                </div>
+              </div>
             </div>
           ) : (
             <>
-              <div className="space-y-4 p-4 md:hidden">
+              <div className="grid gap-3 p-4 md:hidden">
                 {filteredRows.length ? (
                   filteredRows.map((row) => (
-                    <article
+                    <Link
                       key={row.id}
-                      className="min-w-0 rounded-3xl border border-outline-variant/15 bg-white p-4 shadow-sm"
+                      href={`/admin/bounties/${encodeURIComponent(row.id)}`}
+                      className="group block min-w-0 rounded-3xl border border-outline-variant/15 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:bg-surface-container-low hover:shadow-md"
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="break-all font-mono text-sm font-bold text-primary">
+                          <p className="break-all font-mono text-xs font-bold uppercase tracking-[0.14em] text-primary">
                             {row.code}
                           </p>
-                          <p className="mt-2 break-words font-semibold text-on-surface">
-                            {row.clientName}
-                          </p>
-                          <p className="mt-1 break-words text-sm text-on-surface">
+                          <p className="mt-2 break-words font-headline text-lg font-extrabold text-on-surface">
                             {row.title}
+                          </p>
+                          <p className="mt-1 break-words text-sm font-semibold text-on-surface">
+                            {row.clientName}
                           </p>
                         </div>
 
+                        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-on-surface-variant transition group-hover:translate-x-1 group-hover:text-primary" />
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${statusClass(
                             row.status
@@ -569,13 +611,18 @@ export default function AdminBountyListView() {
                           <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
                             {row.items.slice(0, 4).map((item, itemIndex) => (
                               <li key={String(item.id ?? `${row.id}-${itemIndex}`)}>
-                                {firstString(item, ["item_name", "name"], `Item ${itemIndex + 1}`)} — {firstString(item, ["target_quantity", "quantity", "qty"], "-")} {firstString(item, ["unit"], "")}
+                                {firstString(
+                                  item,
+                                  ["item_name", "name"],
+                                  `Item ${itemIndex + 1}`
+                                )}{" "}
+                                — {getItemQuantityLabel(item)}
                               </li>
                             ))}
                           </ul>
                         </div>
                       ) : null}
-                    </article>
+                    </Link>
                   ))
                 ) : (
                   <div className="rounded-3xl border border-dashed border-outline-variant/20 bg-surface-container-low p-6 text-center text-sm text-on-surface-variant">
@@ -585,7 +632,7 @@ export default function AdminBountyListView() {
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-[980px] text-left">
+                <table className="min-w-[1080px] text-left">
                   <thead className="bg-surface-container-low">
                     <tr>
                       <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
@@ -609,6 +656,9 @@ export default function AdminBountyListView() {
                       <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
                         Created By
                       </th>
+                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+                        Action
+                      </th>
                     </tr>
                   </thead>
 
@@ -620,9 +670,12 @@ export default function AdminBountyListView() {
                           className="bg-surface-container-lowest transition hover:bg-surface-container-low/40"
                         >
                           <td className="px-5 py-4">
-                            <p className="break-all font-mono text-sm font-bold text-primary">
+                            <Link
+                              href={`/admin/bounties/${encodeURIComponent(row.id)}`}
+                              className="break-all font-mono text-sm font-bold text-primary hover:underline"
+                            >
                               {row.code}
-                            </p>
+                            </Link>
                           </td>
 
                           <td className="px-5 py-4">
@@ -632,9 +685,12 @@ export default function AdminBountyListView() {
                           </td>
 
                           <td className="px-5 py-4">
-                            <p className="break-words text-sm font-medium text-on-surface">
+                            <Link
+                              href={`/admin/bounties/${encodeURIComponent(row.id)}`}
+                              className="break-words text-sm font-bold text-on-surface hover:text-primary"
+                            >
                               {row.title}
-                            </p>
+                            </Link>
                             <p className="mt-1 line-clamp-2 max-w-[280px] break-words text-xs leading-5 text-on-surface-variant">
                               {row.description}
                             </p>
@@ -668,12 +724,22 @@ export default function AdminBountyListView() {
                           <td className="px-5 py-4 text-sm text-on-surface-variant">
                             <span className="break-words">{row.createdBy}</span>
                           </td>
+
+                          <td className="px-5 py-4">
+                            <Link
+                              href={`/admin/bounties/${encodeURIComponent(row.id)}`}
+                              className="inline-flex items-center gap-2 rounded-2xl bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/15"
+                            >
+                              <Eye className="h-4 w-4" />
+                              Detail
+                            </Link>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
                         <td
-                          colSpan={7}
+                          colSpan={8}
                           className="px-5 py-10 text-center text-sm text-on-surface-variant"
                         >
                           Tidak ada bounty yang cocok dengan filter saat ini.

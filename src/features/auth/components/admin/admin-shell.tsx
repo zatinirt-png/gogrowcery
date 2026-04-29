@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import UniversalAppShell from "@/components/common/universal-app-shell";
 import { getMe, logout } from "@/features/auth/api";
@@ -68,18 +67,7 @@ export default function AdminShell({
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background px-6 py-16">
-        <div className="mx-auto max-w-6xl rounded-3xl bg-surface-container-lowest p-8 shadow-sm">
-          <div className="flex items-center gap-3 text-on-surface-variant">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Memuat dashboard admin...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return null;
 
   return (
     <UniversalAppShell

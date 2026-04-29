@@ -33,36 +33,39 @@ function resolveTemplatePath(template: string, id: number | string) {
 }
 
 function normalizePendingSuppliers(payload: unknown): PendingSupplierRecord[] {
-  if (Array.isArray(payload)) return payload as PendingSupplierRecord[];
+  function findSupplierArray(source: unknown, depth = 0): PendingSupplierRecord[] {
+    if (Array.isArray(source)) return source as PendingSupplierRecord[];
 
-  if (!payload || typeof payload !== "object") return [];
+    if (!source || typeof source !== "object" || depth > 5) return [];
 
-  const data = payload as Record<string, unknown>;
+    const record = source as Record<string, unknown>;
 
-  const nestedData =
-    data.data && typeof data.data === "object"
-      ? (data.data as Record<string, unknown>)
-      : undefined;
+    const preferredKeys = [
+      "data",
+      "suppliers",
+      "supplier",
+      "pending",
+      "applications",
+      "items",
+      "results",
+      "records",
+      "users",
+      "list",
+    ];
 
-  const candidateArrays = [
-    data.data,
-    data.suppliers,
-    data.pending,
-    data.items,
-    data.results,
-    data.records,
-    nestedData?.suppliers,
-    nestedData?.pending,
-    nestedData?.items,
-    nestedData?.results,
-    nestedData?.records,
-  ];
+    for (const key of preferredKeys) {
+      if (!(key in record)) continue;
 
-  for (const candidate of candidateArrays) {
-    if (Array.isArray(candidate)) return candidate as PendingSupplierRecord[];
+      const value = record[key];
+      const found = findSupplierArray(value, depth + 1);
+
+      if (found.length > 0 || Array.isArray(value)) return found;
+    }
+
+    return [];
   }
 
-  return [];
+  return findSupplierArray(payload);
 }
 
 function normalizeSupplierRecord(payload: unknown): PendingSupplierRecord | null {
@@ -317,6 +320,27 @@ export async function getPendingSuppliers() {
   } catch (error) {
     extractApiError(error);
   }
+}
+
+export async function getAdminSuppliers() {
+  const endpoints = [
+    env.ADMIN_SUPPLIERS_PATH,
+    `${env.ADMIN_SUPPLIERS_PATH}?status=all`,
+    `${env.ADMIN_SUPPLIERS_PATH}?include=pending`,
+  ];
+
+  let lastError: unknown = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const { data } = await apiClient.get(endpoint);
+      return normalizePendingSuppliers(data);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  extractApiError(lastError);
 }
 
 export async function getAdminSupplierDetail(id: number | string) {

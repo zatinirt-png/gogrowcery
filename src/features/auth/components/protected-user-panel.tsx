@@ -68,16 +68,7 @@ export default function ProtectedUserPanel({
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="rounded-2xl bg-surface-container-lowest p-8 shadow-sm">
-        <div className="flex items-center gap-3 text-on-surface-variant">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Memuat profil pengguna...</span>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return null;
 
   return (
     <UniversalAppShell

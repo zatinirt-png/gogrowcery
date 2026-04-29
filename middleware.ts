@@ -8,7 +8,13 @@ const PUBLIC_PATHS = ["/", "/login", "/register"];
 const PUBLIC_PREFIXES = ["/register/"];
 
 function normalizeRole(role?: string | null) {
-  return (role || "").trim().toLowerCase();
+  const normalized = (role || "").trim().toLowerCase();
+
+  if (["supplier", "farmer", "petani"].includes(normalized)) {
+    return "supplier";
+  }
+
+  return normalized;
 }
 
 function getRoleRedirectPath(role?: string | null) {
@@ -63,7 +69,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(getRoleRedirectPath(role), request.url));
   }
 
-  if (pathname.startsWith("/supplier") && role !== "supplier" && role !== "farmer") {
+  if (pathname.startsWith("/supplier") && role !== "supplier") {
     return NextResponse.redirect(new URL(getRoleRedirectPath(role), request.url));
   }
 

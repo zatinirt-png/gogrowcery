@@ -1,4 +1,5 @@
 import Cookies from "js-cookie";
+import { normalizeAppRole } from "@/lib/role-redirect";
 
 export const AUTH_TOKEN_KEY = "gg_token";
 export const AUTH_ROLE_KEY = "gg_role";
@@ -23,11 +24,11 @@ export function removeAccessToken() {
 }
 
 export function normalizeRole(role: string) {
-  return (role || "").trim().toLowerCase();
+  return normalizeAppRole(role);
 }
 
 export function setUserRole(role: string, options?: PersistSessionOptions) {
-  Cookies.set(AUTH_ROLE_KEY, normalizeRole(role), {
+  Cookies.set(AUTH_ROLE_KEY, normalizeAppRole(role), {
     expires: options?.remember ? 7 : undefined,
     sameSite: "lax",
   });
@@ -35,7 +36,7 @@ export function setUserRole(role: string, options?: PersistSessionOptions) {
 
 export function getUserRole() {
   const role = Cookies.get(AUTH_ROLE_KEY);
-  return role ? normalizeRole(role) : null;
+  return role ? normalizeAppRole(role) : null;
 }
 
 export function removeUserRole() {

@@ -127,6 +127,20 @@ function getRoleNav(role?: string | null): NavItem[] {
         href: "/admin/bounties",
         icon: HandCoins,
         match: (pathname) => pathname.startsWith("/admin/bounties"),
+        children: [
+          {
+            label: "Bounty Directory",
+            href: "/admin/bounties",
+            icon: ClipboardList,
+            match: (pathname) => pathname === "/admin/bounties",
+          },
+          {
+            label: "Create Bounty",
+            href: "/admin/bounties/create",
+            icon: HandCoins,
+            match: (pathname) => pathname === "/admin/bounties/create",
+          },
+        ],
       },
     ];
   }
@@ -435,7 +449,7 @@ export default function UniversalAppShell({
 
         {roleNav.length > 0 ? (
           <NavSection
-            title={isAdmin ? undefined : "Admin Menu"}
+            title={isAdmin ? undefined : "Menu"}
             items={roleNav}
             pathname={pathname}
             onNavigate={closeMenus}
