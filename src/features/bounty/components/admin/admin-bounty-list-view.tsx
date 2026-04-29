@@ -10,6 +10,7 @@ import {
   Eye,
   HandCoins,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -726,13 +727,23 @@ export default function AdminBountyListView() {
                           </td>
 
                           <td className="px-5 py-4">
-                            <Link
-                              href={`/admin/bounties/${encodeURIComponent(row.id)}`}
-                              className="inline-flex items-center gap-2 rounded-2xl bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/15"
-                            >
-                              <Eye className="h-4 w-4" />
-                              Detail
-                            </Link>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                href={`/admin/bounties/${encodeURIComponent(row.id)}`}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/15"
+                              >
+                                <Eye className="h-4 w-4" />
+                                View
+                              </Link>
+
+                              <Link
+                                href={`/admin/bounties/${encodeURIComponent(row.id)}?mode=edit`}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-surface-container-high px-3 py-2 text-xs font-bold text-on-surface transition hover:bg-surface-container-highest"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Edit
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       ))

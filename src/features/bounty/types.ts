@@ -13,6 +13,8 @@ export type CreateBountyPayload = {
   items: BountyItemPayload[];
 };
 
+export type UpdateBountyPayload = CreateBountyPayload;
+
 export type CreateBountyResponse = {
   message?: string;
   data?: {
@@ -25,6 +27,8 @@ export type CreateBountyResponse = {
   };
   [key: string]: unknown;
 };
+
+export type UpdateBountyResponse = CreateBountyResponse;
 
 export type BountyItemRecord = {
   id?: number | string;

@@ -6,6 +6,8 @@ import type {
   CreateBountyPayload,
   CreateBountyResponse,
   SupplierBountyRecord,
+  UpdateBountyPayload,
+  UpdateBountyResponse,
 } from "@/features/bounty/types";
 
 export type BountyStatus = "draft" | "published" | "closed" | "cancelled" | string;
@@ -152,12 +154,48 @@ export async function getAdminBountyDetail(id: number | string) {
   }
 }
 
+export async function updateBounty(
+  id: number | string,
+  payload: UpdateBountyPayload
+) {
+  try {
+    const safeId = encodeURIComponent(String(id));
+    const { data } = await apiClient.put<UpdateBountyResponse>(
+      `${env.ADMIN_BOUNTIES_PATH}/${safeId}`,
+      payload
+    );
+
+    return data;
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
 export async function updateBountyStatus(id: number | string, status: BountyStatus) {
   try {
     const safeId = encodeURIComponent(String(id));
     const { data } = await apiClient.patch(
       `${env.ADMIN_BOUNTIES_PATH}/${safeId}/status`,
       { status }
+    );
+
+    return data;
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
+export async function extendBountyDeadline(
+  id: number | string,
+  newDeadline: string
+) {
+  try {
+    const safeId = encodeURIComponent(String(id));
+    const { data } = await apiClient.patch(
+      `${env.ADMIN_BOUNTIES_PATH}/${safeId}/extend-deadline`,
+      {
+        new_deadline: newDeadline,
+      }
     );
 
     return data;
