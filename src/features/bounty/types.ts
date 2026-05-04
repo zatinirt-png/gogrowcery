@@ -102,6 +102,20 @@ export type SupplierBidRecord = {
   submitted_at?: string | null;
   [key: string]: unknown;
 };
+export type AdminBidRecord = SupplierBidRecord & {
+  supplier_id?: number | string | null;
+  supplierId?: number | string | null;
+  supplier_name?: string | null;
+  supplier?: {
+    id?: number | string;
+    name?: string | null;
+    business_name?: string | null;
+    company_name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    [key: string]: unknown;
+  } | null;
+};
 
 export type SupplierBidItemPayload = {
   bounty_item_id: number | string;
@@ -115,6 +129,8 @@ export type SupplierBidPayload = {
   notes?: string;
   items: SupplierBidItemPayload[];
 };
+
+
 
 export type AdminBountyRecord = BountyRecord;
 export type SupplierBountyRecord = BountyRecord;

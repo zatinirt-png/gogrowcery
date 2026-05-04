@@ -2,6 +2,7 @@ import axios from "axios";
 import { apiClient } from "@/lib/api-client";
 import { env } from "@/lib/env";
 import type {
+  AdminBidRecord,
   AdminBountyRecord,
   CreateBountyPayload,
   CreateBountyResponse,
@@ -163,6 +164,48 @@ export async function getAdminBountyDetail(id: number | string) {
     const safeId = encodeURIComponent(String(id));
     const { data } = await apiClient.get(`${env.ADMIN_BOUNTIES_PATH}/${safeId}`);
     return normalizeBountyDetail<AdminBountyRecord>(data);
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+export async function getAdminBountyBids(id: number | string) {
+  try {
+    const safeId = encodeURIComponent(String(id));
+    const { data } = await apiClient.get(
+      `${env.ADMIN_BOUNTIES_PATH}/${safeId}/bids`
+    );
+
+    return normalizeBountyList<AdminBidRecord>(data);
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
+export type AdminBountyUpdatePayload = {
+  client_name: string;
+  title: string;
+  description: string;
+  deadline_at: string;
+  items: Array<{
+    item_name: string;
+    target_quantity: number;
+    unit: string;
+    notes?: string;
+  }>;
+};
+
+export async function updateAdminBountyDraft(
+  id: number | string,
+  payload: AdminBountyUpdatePayload
+) {
+  try {
+    const safeId = encodeURIComponent(String(id));
+    const { data } = await apiClient.put(
+      `${env.ADMIN_BOUNTIES_PATH}/${safeId}`,
+      payload
+    );
+
+    return data;
   } catch (error) {
     extractApiError(error);
   }

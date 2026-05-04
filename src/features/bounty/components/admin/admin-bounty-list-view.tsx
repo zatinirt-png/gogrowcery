@@ -4,15 +4,19 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
-  ArrowRight,
   CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
+  Edit3,
   Eye,
-  HandCoins,
+  FileText,
+  Gavel,
   Loader2,
-  Pencil,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   XCircle,
 } from "lucide-react";
@@ -21,6 +25,10 @@ import AdminShell from "@/features/auth/components/admin/admin-shell";
 import { getAdminBounties } from "@/features/bounty/api";
 import type { AdminBountyRecord, BountyItemRecord } from "@/features/bounty/types";
 
+const PAGE_SIZE = 10;
+
+type BidStatusFilter = "all" | "has_bid" | "no_bid";
+
 type AdminBountyRow = {
   id: string;
   code: string;
@@ -28,9 +36,12 @@ type AdminBountyRow = {
   title: string;
   description: string;
   deadlineAt: string;
+  originalDeadlineAt: string;
+  isExtended: boolean;
   status: string;
   items: BountyItemRecord[];
   itemsCount: number;
+  totalBids: number;
   createdBy: string;
   createdAt: string;
 };
@@ -58,9 +69,24 @@ function firstString(source: unknown, paths: string[], fallback = "-") {
   return fallback;
 }
 
+function firstNumber(source: unknown, paths: string[], fallback = 0) {
+  for (const path of paths) {
+    const value = getNestedValue(source, path);
+
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+
+    if (typeof value === "string") {
+      const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+
+  return fallback;
+}
+
 function titleCaseStatus(value: string) {
   const normalized = value.trim();
-  if (!normalized) return "Available";
+  if (!normalized) return "Draft";
 
   return normalized
     .replace(/[_-]+/g, " ")
@@ -72,7 +98,11 @@ function titleCaseStatus(value: string) {
 
 function normalizeStatus(record: AdminBountyRecord) {
   return titleCaseStatus(
-    firstString(record, ["status", "publication_status", "approval_status"], "Available")
+    firstString(
+      record,
+      ["status", "publication_status", "approval_status", "data.status"],
+      "Draft"
+    )
   );
 }
 
@@ -89,17 +119,68 @@ function getBountyItems(record: AdminBountyRecord) {
   return [];
 }
 
+function getTotalBids(record: AdminBountyRecord) {
+  const direct = firstNumber(
+    record,
+    [
+      "total_bids",
+      "bids_count",
+      "bid_count",
+      "total_bid",
+      "data.total_bids",
+      "data.bids_count",
+      "data.bid_count",
+      "meta.total_bids",
+    ],
+    -1
+  );
+
+  if (direct >= 0) return direct;
+
+  const bids = getNestedValue(record, "bids");
+  if (Array.isArray(bids)) return bids.length;
+
+  const dataBids = getNestedValue(record, "data.bids");
+  if (Array.isArray(dataBids)) return dataBids.length;
+
+  return 0;
+}
+
 function toAdminBountyRow(record: AdminBountyRecord, index: number): AdminBountyRow {
   const fallbackId = `bounty-${index + 1}`;
   const id = firstString(record, ["id", "uuid", "bounty_id", "data.id"], fallbackId);
 
   const code = firstString(
     record,
-    ["code", "bounty_code", "reference", "ref_code", "number", "id", "data.id"],
-    `BNT-${String(index + 1).padStart(3, "0")}`
+    ["code", "bounty_code", "reference", "ref_code", "number", "data.code", "id"],
+    `BNT-${String(index + 1).padStart(4, "0")}`
   );
 
   const items = getBountyItems(record);
+  const deadlineAt = firstString(
+    record,
+    [
+      "deadline_at",
+      "deadline",
+      "deadlineAt",
+      "extended_deadline_at",
+      "new_deadline",
+      "data.deadline_at",
+    ],
+    "-"
+  );
+
+  const originalDeadlineAt = firstString(
+    record,
+    [
+      "original_deadline_at",
+      "previous_deadline_at",
+      "old_deadline_at",
+      "initial_deadline_at",
+      "data.original_deadline_at",
+    ],
+    ""
+  );
 
   return {
     id,
@@ -115,17 +196,26 @@ function toAdminBountyRow(record: AdminBountyRecord, index: number): AdminBounty
       ["description", "notes", "data.description"],
       "Tidak ada deskripsi."
     ),
-    deadlineAt: firstString(
-      record,
-      ["deadline_at", "deadline", "deadlineAt", "data.deadline_at"],
-      "-"
-    ),
+    deadlineAt,
+    originalDeadlineAt,
+    isExtended:
+      Boolean(originalDeadlineAt) &&
+      originalDeadlineAt !== "-" &&
+      formatDateOnly(originalDeadlineAt) !== formatDateOnly(deadlineAt),
     status: normalizeStatus(record),
     items,
     itemsCount: items.length,
+    totalBids: getTotalBids(record),
     createdBy: firstString(
       record,
-      ["created_by.name", "creator.name", "admin.name", "user.name", "created_by"],
+      [
+        "created_by.name",
+        "creator.name",
+        "admin.name",
+        "user.name",
+        "created_by",
+        "data.created_by.name",
+      ],
       "-"
     ),
     createdAt: firstString(record, ["created_at", "createdAt", "data.created_at"], "-"),
@@ -136,15 +226,15 @@ function statusClass(status: string) {
   const normalized = status.toLowerCase();
 
   if (["published", "available", "open", "active"].includes(normalized)) {
-    return "bg-primary/10 text-primary";
+    return "bg-green-100 text-green-800";
   }
 
   if (["draft", "pending"].includes(normalized)) {
-    return "bg-secondary-container text-on-secondary-container";
+    return "bg-slate-100 text-slate-600";
   }
 
   if (["closed", "completed", "done"].includes(normalized)) {
-    return "bg-tertiary-fixed text-on-tertiary-fixed-variant";
+    return "bg-orange-100 text-orange-800";
   }
 
   if (["cancelled", "canceled", "rejected", "expired"].includes(normalized)) {
@@ -152,6 +242,17 @@ function statusClass(status: string) {
   }
 
   return "bg-surface-container-high text-on-surface";
+}
+
+function formatDateOnly(value: string) {
+  if (!value || value === "-") return "-";
+
+  const isoValue = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(isoValue);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toISOString().slice(0, 10);
 }
 
 function formatDateLabel(value: string) {
@@ -166,8 +267,6 @@ function formatDateLabel(value: string) {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(date);
 }
 
@@ -192,23 +291,9 @@ function getRemainingLabel(value: string, status: string) {
   if (diffMs <= 0) return "Deadline lewat";
 
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  if (diffHours < 24) return `${diffHours} jam lagi`;
+  if (diffHours < 24) return `${Math.max(diffHours, 1)} jam lagi`;
 
   return `${Math.ceil(diffHours / 24)} hari lagi`;
-}
-
-function isUrgent(row: AdminBountyRow) {
-  const normalizedStatus = row.status.toLowerCase();
-
-  if (!["published", "available", "open", "active"].includes(normalizedStatus)) {
-    return false;
-  }
-
-  const deadline = getDeadlineDate(row.deadlineAt);
-  if (!deadline) return false;
-
-  const diffDays = (deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-  return diffDays > 0 && diffDays <= 3;
 }
 
 function getItemQuantityLabel(item: BountyItemRecord) {
@@ -218,20 +303,42 @@ function getItemQuantityLabel(item: BountyItemRecord) {
   return `${quantity}${unit ? ` ${unit}` : ""}`.trim();
 }
 
+function getItemName(item: BountyItemRecord, index: number) {
+  return firstString(item, ["item_name", "name"], `Item ${index + 1}`);
+}
+
+function getItemsPreview(row: AdminBountyRow) {
+  if (!row.items.length) return "Item belum tersedia";
+
+  const preview = row.items
+    .slice(0, 2)
+    .map((item, index) => `${getItemName(item, index)} ${getItemQuantityLabel(item)}`)
+    .join(", ");
+
+  const rest = row.items.length - 2;
+
+  return rest > 0 ? `${preview}, +${rest} item` : preview;
+}
+
 export default function AdminBountyListView() {
   const [bounties, setBounties] = useState<AdminBountyRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
-  const [deadlineDate, setDeadlineDate] = useState("");
-  const [clientName, setClientName] = useState("All");
+  const [bidStatus, setBidStatus] = useState<BidStatusFilter>("all");
+  const [page, setPage] = useState(1);
 
   const rows = useMemo(
     () => bounties.map((record, index) => toAdminBountyRow(record, index)),
     [bounties]
   );
+
+  const statusOptions = useMemo(() => {
+    return Array.from(new Set(rows.map((item) => item.status))).sort();
+  }, [rows]);
 
   const loadBounties = async (mode: "initial" | "refresh" = "refresh") => {
     if (mode === "initial") setIsLoading(true);
@@ -258,13 +365,9 @@ export default function AdminBountyListView() {
     loadBounties("initial");
   }, []);
 
-  const clientOptions = useMemo(() => {
-    return Array.from(new Set(rows.map((item) => item.clientName))).sort();
-  }, [rows]);
-
-  const statusOptions = useMemo(() => {
-    return Array.from(new Set(rows.map((item) => item.status))).sort();
-  }, [rows]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, status, bidStatus]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -276,152 +379,126 @@ export default function AdminBountyListView() {
         row.description,
         row.status,
         row.createdBy,
+        getItemsPreview(row),
       ]
         .join(" ")
         .toLowerCase();
 
       const matchesSearch = !searchValue || haystack.includes(searchValue);
       const matchesStatus = status === "All" || row.status === status;
-      const matchesDeadline = deadlineDate ? row.deadlineAt.startsWith(deadlineDate) : true;
-      const matchesClient = clientName === "All" || row.clientName === clientName;
 
-      return matchesSearch && matchesStatus && matchesDeadline && matchesClient;
+      const matchesBidStatus =
+        bidStatus === "all" ||
+        (bidStatus === "has_bid" && row.totalBids > 0) ||
+        (bidStatus === "no_bid" && row.totalBids <= 0);
+
+      return matchesSearch && matchesStatus && matchesBidStatus;
     });
-  }, [rows, search, status, deadlineDate, clientName]);
+  }, [rows, search, status, bidStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredRows.slice(start, start + PAGE_SIZE);
+  }, [filteredRows, page]);
 
   const stats = useMemo(() => {
-    const live = rows.filter((item) =>
+    const published = rows.filter((item) =>
       ["published", "available", "open", "active"].includes(item.status.toLowerCase())
     ).length;
 
     const draft = rows.filter((item) => item.status.toLowerCase() === "draft").length;
-    const urgent = rows.filter(isUrgent).length;
+    const withBids = rows.filter((item) => item.totalBids > 0).length;
 
-    return { total: rows.length, live, draft, urgent };
+    return {
+      total: rows.length,
+      published,
+      draft,
+      withBids,
+    };
   }, [rows]);
 
   const resetFilters = () => {
     setSearch("");
     setStatus("All");
-    setDeadlineDate("");
-    setClientName("All");
+    setBidStatus("all");
+    setPage(1);
   };
+
+  const showingStart = filteredRows.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const showingEnd = Math.min(page * PAGE_SIZE, filteredRows.length);
 
   return (
     <AdminShell
-      title="Bounty Directory"
-      description="Daftar bounty dari API admin. Klik salah satu bounty untuk membuka halaman detail."
+      title="Bounty"
+      description="Curate and oversee active agricultural procurement requests."
       actions={
-        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <button
             type="button"
             onClick={() => loadBounties("refresh")}
             disabled={isLoading || isRefreshing}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-low disabled:opacity-70 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-high px-5 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-highest disabled:cursor-wait disabled:opacity-70 sm:w-auto"
           >
             {isRefreshing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <RefreshCw className="h-4 w-4 shrink-0" />
+              <RefreshCw className="h-4 w-4" />
             )}
-            <span>Refresh</span>
+            Refresh
           </button>
 
           <Link
             href="/admin/bounties/create"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:brightness-95 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-primary/90 sm:w-auto"
           >
-            <Plus className="h-4 w-4 shrink-0" />
-            <span>Create Bounty</span>
+            <Plus className="h-4 w-4" />
+            Create Bounty
           </Link>
         </div>
       }
     >
-      <div className="grid gap-5 sm:gap-6">
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          <article className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                  Total Bounties
-                </p>
-                <p className="mt-3 break-words font-headline text-3xl font-extrabold leading-none text-on-surface">
-                  {stats.total}
-                </p>
-                <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
-                  Seluruh bounty dari endpoint admin.
-                </p>
-              </div>
+      <div className="w-full space-y-8">
+        <section className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div>
+            <nav className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-on-surface-variant">
+              <span>Portal</span>
+              <span>/</span>
+              <span>Management</span>
+            </nav>
 
-              <div className="shrink-0 rounded-2xl bg-surface-container-low p-3 text-primary">
-                <HandCoins className="h-5 w-5" />
-              </div>
-            </div>
-          </article>
+            <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface">
+              Bounty
+            </h1>
 
-          <article className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                  Live / Available
-                </p>
-                <p className="mt-3 break-words font-headline text-3xl font-extrabold leading-none text-on-surface">
-                  {stats.live}
-                </p>
-                <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
-                  Bounty aktif untuk supplier.
-                </p>
-              </div>
+            <p className="mt-2 text-lg text-on-surface-variant">
+              Curate and oversee active agricultural procurement requests.
+            </p>
+          </div>
 
-              <div className="shrink-0 rounded-2xl bg-surface-container-low p-3 text-primary">
-                <CalendarDays className="h-5 w-5" />
-              </div>
-            </div>
-          </article>
+          <Link
+            href="/admin/bounties/create"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-3.5 font-bold text-white shadow-sm transition hover:bg-primary/90"
+          >
+            <Plus className="h-5 w-5" />
+            Create Bounty
+          </Link>
+        </section>
 
-          <article className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                  Draft
-                </p>
-                <p className="mt-3 break-words font-headline text-3xl font-extrabold leading-none text-on-surface">
-                  {stats.draft}
-                </p>
-                <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
-                  Bounty dengan status draft dari backend.
-                </p>
-              </div>
-
-              <div className="shrink-0 rounded-2xl bg-surface-container-low p-3 text-secondary">
-                <Clock3 className="h-5 w-5" />
-              </div>
-            </div>
-          </article>
-
-          <article className="min-w-0 overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-sm sm:p-5">
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                  Urgent Deadline
-                </p>
-                <p className="mt-3 break-words font-headline text-3xl font-extrabold leading-none text-on-surface">
-                  {stats.urgent}
-                </p>
-                <p className="mt-2 break-words text-sm leading-6 text-on-surface-variant">
-                  Bounty aktif dengan deadline 3 hari ke depan.
-                </p>
-              </div>
-
-              <div className="shrink-0 rounded-2xl bg-surface-container-low p-3 text-tertiary">
-                <Clock3 className="h-5 w-5" />
-              </div>
-            </div>
-          </article>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard label="Total Bounties" value={stats.total} tone="default" />
+          <KpiCard label="Published" value={stats.published} tone="primary" />
+          <KpiCard label="Draft" value={stats.draft} tone="secondary" />
+          <KpiCard label="With Bids" value={stats.withBids} tone="default" />
         </section>
 
         {errorMessage ? (
-          <section className="rounded-3xl border border-error/15 bg-error-container p-5 shadow-sm">
+          <section className="rounded-2xl border border-error/15 bg-error-container p-5 shadow-sm">
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-on-error-container" />
               <div className="min-w-0">
@@ -436,281 +513,163 @@ export default function AdminBountyListView() {
           </section>
         ) : null}
 
-        <section className="rounded-3xl border border-outline-variant/15 bg-surface-container-low p-4 shadow-sm sm:p-6">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_180px_180px_220px_auto] xl:items-end">
-            <div className="min-w-0">
-              <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Search Bounties
-              </label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="ID, title, client, atau status..."
-                  className="w-full rounded-2xl border border-transparent bg-surface-container-lowest py-3 pl-11 pr-4 text-sm text-on-surface outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-                />
-              </div>
-            </div>
-
-            <div className="min-w-0">
-              <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Status
-              </label>
-              <select
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-                className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-              >
-                <option value="All">All Statuses</option>
-                {statusOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="min-w-0">
-              <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Deadline
-              </label>
+        <section className="flex flex-wrap items-end gap-4 rounded-2xl bg-surface-container-low p-5 shadow-sm md:p-6">
+          <div className="min-w-[240px] flex-1">
+            <label className="mb-2 ml-1 block text-xs font-bold uppercase text-on-surface-variant">
+              Search Bounties
+            </label>
+            <div className="relative">
               <input
-                type="date"
-                value={deadlineDate}
-                onChange={(event) => setDeadlineDate(event.target.value)}
-                className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="ID, Title or Client..."
+                className="w-full rounded-xl border-none bg-surface-container-lowest py-3 pl-11 pr-4 text-sm text-on-surface outline-none transition focus:ring-2 focus:ring-primary-container"
               />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             </div>
-
-            <div className="min-w-0">
-              <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                Client
-              </label>
-              <select
-                value={clientName}
-                onChange={(event) => setClientName(event.target.value)}
-                className="w-full rounded-2xl border border-transparent bg-surface-container-lowest px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary-fixed-dim focus:ring-2 focus:ring-primary-fixed-dim/20"
-              >
-                <option value="All">All Clients</option>
-                {clientOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-high xl:w-auto"
-            >
-              <XCircle className="h-4 w-4" />
-              Reset
-            </button>
           </div>
+
+          <div className="w-full md:w-48">
+            <label className="mb-2 ml-1 block text-xs font-bold uppercase text-on-surface-variant">
+              Status
+            </label>
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              className="w-full rounded-xl border-none bg-surface-container-lowest px-4 py-3 text-sm text-on-surface outline-none transition focus:ring-2 focus:ring-primary-container"
+            >
+              <option value="All">All Statuses</option>
+              {statusOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full md:w-48">
+            <label className="mb-2 ml-1 block text-xs font-bold uppercase text-on-surface-variant">
+              Bid Status
+            </label>
+            <select
+              value={bidStatus}
+              onChange={(event) => setBidStatus(event.target.value as BidStatusFilter)}
+              className="w-full rounded-xl border-none bg-surface-container-lowest px-4 py-3 text-sm text-on-surface outline-none transition focus:ring-2 focus:ring-primary-container"
+            >
+              <option value="all">All Bid Statuses</option>
+              <option value="has_bid">Has Bid</option>
+              <option value="no_bid">No Bid</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-high px-6 py-3 font-semibold text-on-surface transition hover:bg-surface-container-highest md:w-auto"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reset
+          </button>
         </section>
 
-        <section className="overflow-hidden rounded-3xl border border-outline-variant/15 bg-surface-container-lowest shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-outline-variant/10 px-5 py-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="font-headline text-xl font-extrabold text-on-surface">
-                Directory List
-              </p>
-              <p className="mt-1 text-sm text-on-surface-variant">
-                Klik card atau tombol detail untuk membuka halaman detail bounty.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-low px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-              {filteredRows.length} / {rows.length} bounty
-            </div>
-          </div>
-
+        <section className="overflow-hidden rounded-2xl border border-surface-variant bg-surface-container-lowest shadow-sm">
           {isLoading ? (
-            <div className="p-5">
-              <div className="rounded-3xl bg-surface-container-low p-6">
-                <div className="flex items-center gap-3 text-on-surface-variant">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Memuat bounty admin...</span>
-                </div>
+            <div className="p-6">
+              <div className="flex items-center gap-3 rounded-2xl bg-surface-container-low p-6 text-on-surface-variant">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Memuat bounty admin...</span>
               </div>
             </div>
           ) : (
             <>
-              <div className="grid gap-3 p-4 md:hidden">
-                {filteredRows.length ? (
-                  filteredRows.map((row) => (
-                    <Link
-                      key={row.id}
-                      href={`/admin/bounties/${encodeURIComponent(row.id)}`}
-                      className="group block min-w-0 rounded-3xl border border-outline-variant/15 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:bg-surface-container-low hover:shadow-md"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="break-all font-mono text-xs font-bold uppercase tracking-[0.14em] text-primary">
-                            {row.code}
-                          </p>
-                          <p className="mt-2 break-words font-headline text-lg font-extrabold text-on-surface">
-                            {row.title}
-                          </p>
-                          <p className="mt-1 break-words text-sm font-semibold text-on-surface">
-                            {row.clientName}
-                          </p>
-                        </div>
-
-                        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-on-surface-variant transition group-hover:translate-x-1 group-hover:text-primary" />
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${statusClass(
-                            row.status
-                          )}`}
-                        >
-                          {row.status}
-                        </span>
-                      </div>
-
-                      <p className="mt-3 line-clamp-3 break-words text-sm leading-6 text-on-surface-variant">
-                        {row.description}
-                      </p>
-
-                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl bg-surface-container-low p-4">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-                            Deadline
-                          </p>
-                          <p className="mt-2 break-words text-sm text-on-surface">
-                            {formatDateLabel(row.deadlineAt)}
-                          </p>
-                          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-                            {getRemainingLabel(row.deadlineAt, row.status)}
-                          </p>
-                        </div>
-
-                        <div className="rounded-2xl bg-surface-container-low p-4">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-                            Details
-                          </p>
-                          <p className="mt-2 text-sm text-on-surface">
-                            {row.itemsCount} items
-                          </p>
-                          <p className="mt-1 break-words text-sm text-on-surface-variant">
-                            {row.createdBy}
-                          </p>
-                        </div>
-                      </div>
-
-                      {row.items.length ? (
-                        <div className="mt-4 rounded-2xl bg-surface-container-low p-4">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-                            Items
-                          </p>
-                          <ul className="mt-2 space-y-1 text-sm text-on-surface-variant">
-                            {row.items.slice(0, 4).map((item, itemIndex) => (
-                              <li key={String(item.id ?? `${row.id}-${itemIndex}`)}>
-                                {firstString(
-                                  item,
-                                  ["item_name", "name"],
-                                  `Item ${itemIndex + 1}`
-                                )}{" "}
-                                — {getItemQuantityLabel(item)}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </Link>
-                  ))
-                ) : (
-                  <div className="rounded-3xl border border-dashed border-outline-variant/20 bg-surface-container-low p-6 text-center text-sm text-on-surface-variant">
-                    Tidak ada bounty yang cocok dengan filter saat ini.
-                  </div>
-                )}
-              </div>
-
-              <div className="hidden overflow-x-auto md:block">
-                <table className="min-w-[1080px] text-left">
-                  <thead className="bg-surface-container-low">
-                    <tr>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                        Bounty Code
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                        Client Name
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                        Title
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                        Deadline
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                        Status
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                        Items
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                        Created By
-                      </th>
-                      <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                        Action
-                      </th>
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full min-w-[1180px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-surface-variant bg-surface-container-low">
+                      <Th>Bounty Code</Th>
+                      <Th>Title & Client</Th>
+                      <Th>Description</Th>
+                      <Th>Items Preview</Th>
+                      <Th>Deadline</Th>
+                      <Th>Total Bids</Th>
+                      <Th>Created By</Th>
+                      <Th>Status</Th>
+                      <Th className="text-right">Actions</Th>
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-outline-variant/10">
-                    {filteredRows.length ? (
-                      filteredRows.map((row) => (
+                  <tbody className="divide-y divide-surface-variant">
+                    {pagedRows.length ? (
+                      pagedRows.map((row) => (
                         <tr
                           key={row.id}
-                          className="bg-surface-container-lowest transition hover:bg-surface-container-low/40"
+                          className="group transition-colors hover:bg-surface-container-low/50"
                         >
-                          <td className="px-5 py-4">
-                            <Link
-                              href={`/admin/bounties/${encodeURIComponent(row.id)}`}
-                              className="break-all font-mono text-sm font-bold text-primary hover:underline"
-                            >
+                          <td className="px-6 py-4 align-middle">
+                            <span className="whitespace-nowrap font-mono text-xs font-bold text-primary">
                               {row.code}
-                            </Link>
+                            </span>
                           </td>
 
-                          <td className="px-5 py-4">
-                            <p className="break-words font-semibold text-on-surface">
-                              {row.clientName}
-                            </p>
+                          <td className="px-6 py-4 align-middle">
+                            <div className="flex max-w-[260px] flex-col">
+                              <span className="line-clamp-2 text-sm font-semibold text-on-surface">
+                                {row.title}
+                              </span>
+                              <span className="mt-1 line-clamp-1 text-xs text-on-surface-variant">
+                                {row.clientName}
+                              </span>
+                            </div>
                           </td>
 
-                          <td className="px-5 py-4">
-                            <Link
-                              href={`/admin/bounties/${encodeURIComponent(row.id)}`}
-                              className="break-words text-sm font-bold text-on-surface hover:text-primary"
-                            >
-                              {row.title}
-                            </Link>
-                            <p className="mt-1 line-clamp-2 max-w-[280px] break-words text-xs leading-5 text-on-surface-variant">
+                          <td className="max-w-[220px] px-6 py-4 align-middle">
+                            <p className="line-clamp-2 text-sm text-on-surface-variant">
                               {row.description}
                             </p>
                           </td>
 
-                          <td className="px-5 py-4">
-                            <div className="flex flex-col">
-                              <span className="break-words text-sm text-on-surface">
-                                {formatDateLabel(row.deadlineAt)}
-                              </span>
-                              <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                          <td className="max-w-[260px] px-6 py-4 align-middle">
+                            <span className="line-clamp-2 text-sm text-on-surface">
+                              {getItemsPreview(row)}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4 align-middle">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="whitespace-nowrap text-sm text-on-surface">
+                                  {formatDateLabel(row.deadlineAt)}
+                                </span>
+                                {row.isExtended ? (
+                                  <Clock3 className="h-3.5 w-3.5 text-primary" />
+                                ) : null}
+                              </div>
+                              <span className="whitespace-nowrap text-[11px] font-semibold text-on-surface-variant">
                                 {getRemainingLabel(row.deadlineAt, row.status)}
                               </span>
                             </div>
                           </td>
 
-                          <td className="px-5 py-4">
+                          <td className="px-6 py-4 align-middle">
+                            {row.totalBids > 0 ? (
+                              <span className="inline-flex items-center rounded-md bg-secondary-container px-2 py-1 text-xs font-bold text-on-secondary-container">
+                                {row.totalBids} Bid{row.totalBids > 1 ? "s" : ""}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-on-surface-variant">0 Bids</span>
+                            )}
+                          </td>
+
+                          <td className="px-6 py-4 align-middle">
+                            <span className="line-clamp-1 text-sm text-on-surface">
+                              {row.createdBy}
+                            </span>
+                          </td>
+
+                          <td className="px-6 py-4 align-middle">
                             <span
-                              className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${statusClass(
+                              className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-tight ${statusClass(
                                 row.status
                               )}`}
                             >
@@ -718,31 +677,31 @@ export default function AdminBountyListView() {
                             </span>
                           </td>
 
-                          <td className="px-5 py-4 text-sm text-on-surface-variant">
-                            {row.itemsCount} items
-                          </td>
-
-                          <td className="px-5 py-4 text-sm text-on-surface-variant">
-                            <span className="break-words">{row.createdBy}</span>
-                          </td>
-
-                          <td className="px-5 py-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Link
+                          <td className="px-6 py-4 align-middle text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <IconAction
                                 href={`/admin/bounties/${encodeURIComponent(row.id)}`}
-                                className="inline-flex items-center gap-2 rounded-2xl bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/15"
+                                title="View Detail"
+                                tone="primary"
                               >
-                                <Eye className="h-4 w-4" />
-                                View
-                              </Link>
+                                <Eye className="h-5 w-5" />
+                              </IconAction>
 
-                              <Link
+                              <IconAction
                                 href={`/admin/bounties/${encodeURIComponent(row.id)}?mode=edit`}
-                                className="inline-flex items-center gap-2 rounded-2xl bg-surface-container-high px-3 py-2 text-xs font-bold text-on-surface transition hover:bg-surface-container-highest"
+                                title="Edit"
+                                tone="secondary"
                               >
-                                <Pencil className="h-4 w-4" />
-                                Edit
-                              </Link>
+                                <Edit3 className="h-5 w-5" />
+                              </IconAction>
+
+                              <IconAction
+                                href={`/admin/bounties/${encodeURIComponent(row.id)}`}
+                                title="Bids"
+                                tone="muted"
+                              >
+                                <Gavel className="h-5 w-5" />
+                              </IconAction>
                             </div>
                           </td>
                         </tr>
@@ -750,8 +709,8 @@ export default function AdminBountyListView() {
                     ) : (
                       <tr>
                         <td
-                          colSpan={8}
-                          className="px-5 py-10 text-center text-sm text-on-surface-variant"
+                          colSpan={9}
+                          className="px-6 py-12 text-center text-sm text-on-surface-variant"
                         >
                           Tidak ada bounty yang cocok dengan filter saat ini.
                         </td>
@@ -760,23 +719,204 @@ export default function AdminBountyListView() {
                   </tbody>
                 </table>
               </div>
+
+              <div className="grid gap-4 p-4 lg:hidden">
+                {pagedRows.length ? (
+                  pagedRows.map((row) => (
+                    <article
+                      key={row.id}
+                      className="rounded-2xl border border-outline-variant/15 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs font-bold text-primary">
+                            {row.code}
+                          </p>
+                          <h3 className="mt-2 break-words font-headline text-lg font-bold text-on-surface">
+                            {row.title}
+                          </h3>
+                          <p className="mt-1 text-sm font-semibold text-on-surface-variant">
+                            {row.clientName}
+                          </p>
+                        </div>
+
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusClass(
+                            row.status
+                          )}`}
+                        >
+                          {row.status}
+                        </span>
+                      </div>
+
+                      <p className="mt-3 line-clamp-3 text-sm leading-6 text-on-surface-variant">
+                        {row.description}
+                      </p>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <MobileInfo label="Items" value={getItemsPreview(row)} />
+                        <MobileInfo
+                          label="Deadline"
+                          value={formatDateLabel(row.deadlineAt)}
+                        />
+                        <MobileInfo
+                          label="Total Bids"
+                          value={`${row.totalBids} Bid${row.totalBids > 1 ? "s" : ""}`}
+                        />
+                        <MobileInfo label="Created By" value={row.createdBy} />
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-outline-variant/10 pt-4">
+                        <Link
+                          href={`/admin/bounties/${encodeURIComponent(row.id)}`}
+                          className="inline-flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-xs font-bold text-primary"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Link>
+
+                        <Link
+                          href={`/admin/bounties/${encodeURIComponent(row.id)}?mode=edit`}
+                          className="inline-flex items-center gap-2 rounded-xl bg-surface-container-high px-3 py-2 text-xs font-bold text-on-surface"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          Edit
+                        </Link>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-outline-variant/20 bg-surface-container-low p-6 text-center text-sm text-on-surface-variant">
+                    Tidak ada bounty yang cocok dengan filter saat ini.
+                  </div>
+                )}
+              </div>
             </>
           )}
 
-          <div className="flex flex-col gap-3 border-t border-outline-variant/10 bg-surface-container-low px-5 py-4 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-on-surface-variant">
-              Menampilkan{" "}
-              <span className="font-bold text-on-surface">{filteredRows.length}</span>{" "}
-              dari <span className="font-bold text-on-surface">{rows.length}</span>{" "}
-              bounty.
+          <div className="flex flex-col gap-3 border-t border-surface-variant bg-surface-container-lowest px-6 py-4 md:flex-row md:items-center md:justify-between">
+            <p className="text-xs font-medium text-on-surface-variant">
+              Showing{" "}
+              <span className="font-bold text-on-surface">
+                {showingStart}-{showingEnd}
+              </span>{" "}
+              of{" "}
+              <span className="font-bold text-on-surface">
+                {filteredRows.length}
+              </span>{" "}
+              bounties
             </p>
 
-            <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-              Live API
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page <= 1}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant transition hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-container text-xs font-bold text-on-primary-container">
+                {page}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                disabled={page >= totalPages}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant transition hover:bg-surface-container-high disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </section>
       </div>
     </AdminShell>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "default" | "primary" | "secondary";
+}) {
+  const valueClass =
+    tone === "primary"
+      ? "text-primary"
+      : tone === "secondary"
+        ? "text-secondary"
+        : "text-on-surface";
+
+  return (
+    <article className="rounded-2xl border border-surface-variant bg-surface-container-lowest p-5 shadow-sm">
+      <p className="mb-1 text-sm font-medium text-on-surface-variant">{label}</p>
+      <div className="flex items-end gap-3">
+        <h3 className={`font-headline text-3xl font-black ${valueClass}`}>{value}</h3>
+      </div>
+    </article>
+  );
+}
+
+function Th({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={`px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant ${className}`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function IconAction({
+  href,
+  title,
+  tone,
+  children,
+}: {
+  href: string;
+  title: string;
+  tone: "primary" | "secondary" | "muted";
+  children: React.ReactNode;
+}) {
+  const className =
+    tone === "primary"
+      ? "text-primary hover:bg-primary-container/20"
+      : tone === "secondary"
+        ? "text-secondary hover:bg-secondary-container"
+        : "text-on-surface-variant hover:bg-surface-container-high";
+
+  return (
+    <Link
+      href={href}
+      title={title}
+      className={`inline-flex rounded-lg p-1.5 transition-colors ${className}`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function MobileInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-surface-container-low p-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+        {label}
+      </p>
+      <p className="mt-1 line-clamp-2 text-sm font-semibold text-on-surface">
+        {value}
+      </p>
+    </div>
   );
 }
