@@ -7,30 +7,40 @@ import {
   AlertCircle,
   ArrowRight,
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Leaf,
   Package2,
   RefreshCw,
   Search,
-  Sparkles,
+  ShieldCheck,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getMe, logout } from "@/features/auth/api";
 import { clearAuthSession } from "@/features/auth/storage";
 import type { AuthUser } from "@/features/auth/types";
 import { getAuthErrorMessage } from "@/features/auth/utils";
-import { getSupplierBounties } from "@/features/bounty/api";
+import {
+  getSupplierBids,
+  getSupplierBounties,
+} from "@/features/bounty/api";
 import type {
+  SupplierBidRecord,
   SupplierBountyItem,
   SupplierBountyRecord,
 } from "@/features/bounty/types";
 import SupplierShell from "./supplier-shell";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 8;
 
-type DeadlineFilter = "all" | "today" | "week" | "extended";
-type StatusFilter = "open" | "urgent" | "verified" | "all";
+type DeadlineFilter = "all" | "today" | "week";
+type StatusFilter = "all" | "published" | "closed";
+type ParticipationFilter = "all" | "submitted" | "not_submitted";
+
+type BidLookup = Map<string, SupplierBidRecord>;
 
 function getNestedValue(source: unknown, path: string) {
   const parts = path.split(".");
@@ -55,9 +65,29 @@ function firstString(source: unknown, paths: string[], fallback = "-") {
   return fallback;
 }
 
+function firstBoolean(source: unknown, paths: string[]) {
+  for (const path of paths) {
+    const value = getNestedValue(source, path);
+
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value === 1;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["true", "1", "yes", "submitted", "has_bid"].includes(normalized)) return true;
+      if (["false", "0", "no", "none", "null"].includes(normalized)) return false;
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeComparableId(value: string) {
+  return value.trim().replace(/^#/, "");
+}
+
 function titleCaseStatus(value: string) {
   const normalized = value.trim();
-  if (!normalized) return "Available";
+  if (!normalized) return "Published";
 
   return normalized
     .replace(/[_-]+/g, " ")
@@ -82,30 +112,55 @@ function formatDateLabel(value?: string | null) {
   }).format(date);
 }
 
-function resolveStatus(record: SupplierBountyRecord) {
-  return titleCaseStatus(
-    firstString(record, ["status", "publication_status", "approval_status"], "Available")
+function getDateObject(value?: string | null) {
+  if (!value || value === "-") return null;
+
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalized);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isSameLocalDate(date: Date, compare: Date) {
+  return (
+    date.getFullYear() === compare.getFullYear() &&
+    date.getMonth() === compare.getMonth() &&
+    date.getDate() === compare.getDate()
   );
 }
 
-function getItemName(item: SupplierBountyItem, index: number) {
-  return firstString(item, ["item_name", "name"], `Item ${index + 1}`);
+function getRawStatus(record: SupplierBountyRecord) {
+  return firstString(
+    record,
+    ["status", "publication_status", "approval_status", "data.status"],
+    "published"
+  ).toLowerCase();
 }
 
-function getItemQty(item: SupplierBountyItem) {
-  const quantity =
-    item.target_quantity !== null && item.target_quantity !== undefined
-      ? String(item.target_quantity)
-      : item.quantity !== null && item.quantity !== undefined
-        ? String(item.quantity)
-        : item.qty !== null && item.qty !== undefined
-          ? String(item.qty)
-          : "-";
+function getDisplayStatus(record: SupplierBountyRecord) {
+  return titleCaseStatus(getRawStatus(record));
+}
 
-  const unit =
-    typeof item.unit === "string" && item.unit.trim() ? item.unit.trim() : "";
+function getStatusBadgeClass(status: string) {
+  const normalized = status.toLowerCase();
 
-  return `${quantity}${unit ? ` ${unit}` : ""}`.trim();
+  if (["published", "open", "active", "available"].includes(normalized)) {
+    return "bg-primary/10 text-primary border-primary/15";
+  }
+
+  if (["closed", "completed", "done"].includes(normalized)) {
+    return "bg-surface-container-high text-on-surface border-outline-variant/20";
+  }
+
+  if (["cancelled", "canceled", "rejected", "expired"].includes(normalized)) {
+    return "bg-error-container text-on-error-container border-error/10";
+  }
+
+  if (normalized === "draft") {
+    return "bg-surface-container text-on-surface-variant border-outline-variant/20";
+  }
+
+  return "bg-surface-container-high text-on-surface border-outline-variant/20";
 }
 
 function getBountyId(record: SupplierBountyRecord, index: number) {
@@ -115,24 +170,11 @@ function getBountyId(record: SupplierBountyRecord, index: number) {
 function getBountyCode(record: SupplierBountyRecord, index: number) {
   const rawCode = firstString(
     record,
-    ["code", "bounty_code", "reference", "ref_code", "number", "id", "data.id"],
-    `BTY-${String(index + 1).padStart(4, "0")}`
+    ["code", "bounty_code", "reference", "ref_code", "number", "data.code", "id"],
+    `BNT-${String(index + 1).padStart(4, "0")}`
   );
 
-  return rawCode.startsWith("#") ? rawCode : `#${rawCode}`;
-}
-
-function getBountyItems(record: SupplierBountyRecord) {
-  if (Array.isArray(record.items)) return record.items;
-  if (Array.isArray(record.bounty_items)) return record.bounty_items;
-
-  const dataItems = getNestedValue(record, "data.items");
-  if (Array.isArray(dataItems)) return dataItems as SupplierBountyItem[];
-
-  const dataBountyItems = getNestedValue(record, "data.bounty_items");
-  if (Array.isArray(dataBountyItems)) return dataBountyItems as SupplierBountyItem[];
-
-  return [];
+  return rawCode.startsWith("#") ? rawCode.slice(1) : rawCode;
 }
 
 function getBountyTitle(record: SupplierBountyRecord) {
@@ -155,30 +197,53 @@ function getBountyDescription(record: SupplierBountyRecord) {
   );
 }
 
-function getDeadline(record: SupplierBountyRecord) {
+function getCurrentDeadline(record: SupplierBountyRecord) {
   return firstString(
     record,
-    ["deadline_at", "deadline", "deadlineAt", "data.deadline_at"],
+    ["deadline_at", "deadline", "deadlineAt", "extended_deadline_at", "new_deadline", "data.deadline_at"],
     "-"
   );
 }
 
-function getDeadlineDate(value: string) {
-  if (!value || value === "-") return null;
+function getOriginalDeadline(record: SupplierBountyRecord) {
+  return firstString(
+    record,
+    [
+      "original_deadline_at",
+      "previous_deadline_at",
+      "old_deadline_at",
+      "initial_deadline_at",
+      "data.original_deadline_at",
+    ],
+    ""
+  );
+}
 
-  const date = new Date(value.includes("T") ? value : value.replace(" ", "T"));
-  return Number.isNaN(date.getTime()) ? null : date;
+function isDeadlineExtended(record: SupplierBountyRecord) {
+  const current = getCurrentDeadline(record);
+  const original = getOriginalDeadline(record);
+  const status = getRawStatus(record);
+  const extendedAt = firstString(
+    record,
+    ["extended_at", "deadline_extended_at", "data.extended_at"],
+    ""
+  );
+
+  if (status.includes("extended") || Boolean(extendedAt)) return true;
+  if (!original || !current || original === "-" || current === "-") return false;
+
+  return formatDateLabel(original) !== formatDateLabel(current);
 }
 
 function getRemainingLabel(value: string, status: string) {
   const normalizedStatus = status.toLowerCase();
 
-  if (!["published", "available", "open", "active"].includes(normalizedStatus)) {
-    return normalizedStatus === "draft" ? "Belum dipublish" : "Tidak aktif";
+  if (["closed", "cancelled", "canceled", "expired"].includes(normalizedStatus)) {
+    return titleCaseStatus(normalizedStatus);
   }
 
-  const deadline = getDeadlineDate(value);
-  if (!deadline) return "Deadline tidak valid";
+  const deadline = getDateObject(value);
+  if (!deadline) return "Deadline tidak tersedia";
 
   const diffMs = deadline.getTime() - Date.now();
   if (diffMs <= 0) return "Deadline lewat";
@@ -189,147 +254,46 @@ function getRemainingLabel(value: string, status: string) {
   return formatDateLabel(value);
 }
 
-function isOpenBounty(record: SupplierBountyRecord) {
-  const status = resolveStatus(record).toLowerCase();
-  return ["published", "available", "open", "active", "verified"].includes(status);
-}
-
-function isUrgentBounty(record: SupplierBountyRecord) {
-  if (!isOpenBounty(record)) return false;
-
-  const deadline = getDeadlineDate(getDeadline(record));
+function isDeadlinePassed(value: string) {
+  const deadline = getDateObject(value);
   if (!deadline) return false;
-
-  const diffDays = (deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-  return diffDays > 0 && diffDays <= 1;
+  return deadline.getTime() < Date.now();
 }
 
-function isVerifiedBounty(record: SupplierBountyRecord) {
-  const status = resolveStatus(record).toLowerCase();
-  const verificationStatus = firstString(
-    record,
-    ["verification_status", "verified_status", "data.verification_status"],
-    ""
-  ).toLowerCase();
+function getBountyItems(record: SupplierBountyRecord) {
+  if (Array.isArray(record.items)) return record.items;
+  if (Array.isArray(record.bounty_items)) return record.bounty_items;
 
-  const rawVerified = getNestedValue(record, "is_verified") ?? getNestedValue(record, "verified");
+  const dataItems = getNestedValue(record, "data.items");
+  if (Array.isArray(dataItems)) return dataItems as SupplierBountyItem[];
 
-  return (
-    status === "verified" ||
-    verificationStatus === "verified" ||
-    verificationStatus === "true" ||
-    rawVerified === true
-  );
+  const dataBountyItems = getNestedValue(record, "data.bounty_items");
+  if (Array.isArray(dataBountyItems)) return dataBountyItems as SupplierBountyItem[];
+
+  return [];
 }
 
-function isExtendedBounty(record: SupplierBountyRecord) {
-  const status = resolveStatus(record).toLowerCase();
-  const extendedAt = firstString(
-    record,
-    ["extended_at", "deadline_extended_at", "data.extended_at"],
-    ""
-  );
-
-  return status.includes("extended") || Boolean(extendedAt);
+function getItemName(item: SupplierBountyItem, index: number) {
+  return firstString(item, ["item_name", "name", "bounty_item.item_name"], `Item ${index + 1}`);
 }
 
-function isSameLocalDate(date: Date, compare: Date) {
-  return (
-    date.getFullYear() === compare.getFullYear() &&
-    date.getMonth() === compare.getMonth() &&
-    date.getDate() === compare.getDate()
-  );
+function getItemQty(item: SupplierBountyItem) {
+  const quantity =
+    item.target_quantity !== null && item.target_quantity !== undefined
+      ? String(item.target_quantity)
+      : item.quantity !== null && item.quantity !== undefined
+        ? String(item.quantity)
+        : item.qty !== null && item.qty !== undefined
+          ? String(item.qty)
+          : "-";
+
+  const unit = typeof item.unit === "string" && item.unit.trim() ? item.unit.trim() : "";
+
+  return `${quantity}${unit ? ` ${unit}` : ""}`.trim();
 }
 
-function matchDeadlineFilter(record: SupplierBountyRecord, filter: DeadlineFilter) {
-  if (filter === "all") return true;
-  if (filter === "extended") return isExtendedBounty(record);
-
-  const deadline = getDeadlineDate(getDeadline(record));
-  if (!deadline) return false;
-
-  const now = new Date();
-
-  if (filter === "today") {
-    return isSameLocalDate(deadline, now);
-  }
-
-  if (filter === "week") {
-    const sevenDays = new Date(now);
-    sevenDays.setDate(now.getDate() + 7);
-
-    return deadline >= now && deadline <= sevenDays;
-  }
-
-  return true;
-}
-
-function matchStatusFilter(record: SupplierBountyRecord, filter: StatusFilter) {
-  if (filter === "all") return true;
-  if (filter === "open") return isOpenBounty(record);
-  if (filter === "urgent") return isUrgentBounty(record);
-  if (filter === "verified") return isVerifiedBounty(record);
-
-  return true;
-}
-
-function getDisplayStatus(record: SupplierBountyRecord) {
-  if (isUrgentBounty(record)) return "Urgent";
-  if (isVerifiedBounty(record)) return "Verified";
-
-  const status = resolveStatus(record).toLowerCase();
-
-  if (["published", "available", "open", "active"].includes(status)) {
-    return "Open";
-  }
-
-  return titleCaseStatus(status);
-}
-
-function getStatusBadgeClass(label: string) {
-  const normalized = label.toLowerCase();
-
-  if (normalized === "urgent") {
-    return "bg-tertiary-fixed text-on-tertiary-fixed-variant";
-  }
-
-  if (normalized === "verified") {
-    return "bg-secondary-container text-on-secondary-container";
-  }
-
-  if (normalized === "open") {
-    return "bg-primary/10 text-primary";
-  }
-
-  if (["closed", "completed", "done"].includes(normalized)) {
-    return "bg-surface-container-high text-on-surface";
-  }
-
-  if (["cancelled", "canceled", "rejected", "expired"].includes(normalized)) {
-    return "bg-error-container text-on-error-container";
-  }
-
-  return "bg-surface-container-high text-on-surface";
-}
-
-function getStatusDotClass(label: string) {
-  const normalized = label.toLowerCase();
-
-  if (normalized === "urgent") return "bg-tertiary animate-pulse";
-  if (normalized === "verified") return "bg-secondary";
-  if (normalized === "open") return "bg-primary animate-pulse";
-
-  return "bg-on-surface-variant";
-}
-
-function getPrimaryItemLabel(items: SupplierBountyItem[]) {
-  if (items.length === 0) return "No items";
-
-  if (items.length === 1) {
-    return getItemQty(items[0]);
-  }
-
-  return `${items.length} Items`;
+function getItemNote(item: SupplierBountyItem) {
+  return firstString(item, ["notes", "description", "catatan"], "");
 }
 
 function getSearchHaystack(bounty: SupplierBountyRecord, index: number) {
@@ -337,14 +301,119 @@ function getSearchHaystack(bounty: SupplierBountyRecord, index: number) {
     getBountyTitle(bounty),
     getBountyClient(bounty),
     getBountyDescription(bounty),
-    resolveStatus(bounty),
+    getDisplayStatus(bounty),
     getBountyCode(bounty, index),
     getBountyItems(bounty)
-      .map((item, itemIndex) => `${getItemName(item, itemIndex)} ${getItemQty(item)}`)
+      .map((item, itemIndex) => `${getItemName(item, itemIndex)} ${getItemQty(item)} ${getItemNote(item)}`)
       .join(" "),
   ]
     .join(" ")
     .toLowerCase();
+}
+
+function getBidBountyId(bid: SupplierBidRecord) {
+  return firstString(
+    bid,
+    ["bounty_id", "bountyId", "bounty.id", "bounty.uuid", "data.bounty_id", "data.bounty.id"],
+    ""
+  );
+}
+
+function createBidLookup(bids: SupplierBidRecord[]) {
+  const lookup: BidLookup = new Map();
+
+  for (const bid of bids) {
+    const bountyId = normalizeComparableId(getBidBountyId(bid));
+    if (bountyId) lookup.set(bountyId, bid);
+  }
+
+  return lookup;
+}
+
+function getEmbeddedBid(record: SupplierBountyRecord) {
+  const candidates = [
+    getNestedValue(record, "bid"),
+    getNestedValue(record, "my_bid"),
+    getNestedValue(record, "supplier_bid"),
+    getNestedValue(record, "data.bid"),
+    getNestedValue(record, "data.my_bid"),
+    getNestedValue(record, "data.supplier_bid"),
+  ];
+
+  const found = candidates.find(
+    (candidate) => candidate && typeof candidate === "object" && !Array.isArray(candidate)
+  );
+
+  return found ? (found as SupplierBidRecord) : null;
+}
+
+function getSubmittedBid(
+  bounty: SupplierBountyRecord,
+  bidLookup: BidLookup,
+  absoluteIndex: number
+) {
+  const embeddedBid = getEmbeddedBid(bounty);
+  if (embeddedBid) return embeddedBid;
+
+  const explicitFlag = firstBoolean(bounty, [
+    "has_bid",
+    "is_bid_submitted",
+    "bid_submitted",
+    "submitted_bid",
+    "data.has_bid",
+    "data.is_bid_submitted",
+  ]);
+
+  if (explicitFlag === false) return null;
+  if (explicitFlag === true) return ({ status: "submitted" } satisfies SupplierBidRecord);
+
+  const id = normalizeComparableId(getBountyId(bounty, absoluteIndex));
+  return bidLookup.get(id) ?? null;
+}
+
+function getBidStatusLabel(bid: SupplierBidRecord | null) {
+  if (!bid) return "Not Submitted";
+  return titleCaseStatus(firstString(bid, ["status", "data.status"], "Submitted"));
+}
+
+function matchDeadlineFilter(record: SupplierBountyRecord, filter: DeadlineFilter) {
+  if (filter === "all") return true;
+
+  const deadline = getDateObject(getCurrentDeadline(record));
+  if (!deadline) return false;
+
+  const now = new Date();
+
+  if (filter === "today") return isSameLocalDate(deadline, now);
+
+  const sevenDays = new Date(now);
+  sevenDays.setDate(now.getDate() + 7);
+
+  return deadline >= now && deadline <= sevenDays;
+}
+
+function matchStatusFilter(record: SupplierBountyRecord, filter: StatusFilter) {
+  if (filter === "all") return true;
+
+  const status = getRawStatus(record);
+
+  if (filter === "published") {
+    return ["published", "open", "active", "available"].includes(status);
+  }
+
+  if (filter === "closed") {
+    return ["closed", "completed", "done", "expired", "cancelled", "canceled"].includes(status);
+  }
+
+  return true;
+}
+
+function matchParticipationFilter(bid: SupplierBidRecord | null, filter: ParticipationFilter) {
+  if (filter === "all") return true;
+  if (filter === "submitted") return Boolean(bid);
+  if (filter === "not_submitted") return !bid;
+
+  return true;
 }
 
 export default function SupplierBountiesWorkspace() {
@@ -352,29 +421,59 @@ export default function SupplierBountiesWorkspace() {
 
   const [user, setUser] = useState<AuthUser | null>(null);
   const [bounties, setBounties] = useState<SupplierBountyRecord[]>([]);
+  const [bids, setBids] = useState<SupplierBidRecord[]>([]);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isLoadingBounties, setIsLoadingBounties] = useState(true);
   const [bountyError, setBountyError] = useState<string | null>(null);
+  const [bidError, setBidError] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [search, setSearch] = useState("");
   const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("published");
+  const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>("all");
   const [page, setPage] = useState(1);
 
-  const loadBounties = async () => {
+  const bidLookup = useMemo(() => createBidLookup(bids), [bids]);
+
+  const loadBounties = async (shouldToast = false) => {
     setIsLoadingBounties(true);
 
     try {
-      const bountyResponse = await getSupplierBounties();
-      setBounties(bountyResponse);
-      setBountyError(null);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Gagal memuat bounty supplier.";
+      const [bountyResponse, bidResult] = await Promise.allSettled([
+        getSupplierBounties(),
+        getSupplierBids(),
+      ]);
 
-      setBounties([]);
-      setBountyError(message);
-      toast.error(message);
+      if (bountyResponse.status === "fulfilled") {
+        setBounties(bountyResponse.value);
+        setBountyError(null);
+      } else {
+        const message =
+          bountyResponse.reason instanceof Error
+            ? bountyResponse.reason.message
+            : "Gagal memuat bounty supplier.";
+
+        setBounties([]);
+        setBountyError(message);
+        toast.error(message);
+      }
+
+      if (bidResult.status === "fulfilled") {
+        setBids(bidResult.value);
+        setBidError(null);
+      } else {
+        const message =
+          bidResult.reason instanceof Error
+            ? bidResult.reason.message
+            : "Gagal memuat data bid supplier.";
+
+        setBids([]);
+        setBidError(message);
+      }
+
+      if (shouldToast && bountyResponse.status === "fulfilled") {
+        toast.success("Bounty supplier diperbarui.");
+      }
     } finally {
       setIsLoadingBounties(false);
     }
@@ -393,26 +492,13 @@ export default function SupplierBountiesWorkspace() {
         toast.error(getAuthErrorMessage(error));
         router.replace("/login");
         router.refresh();
+        return;
       } finally {
         if (isMounted) setIsLoadingUser(false);
       }
 
-      try {
-        const bountyResponse = await getSupplierBounties();
-        if (!isMounted) return;
-        setBounties(bountyResponse);
-        setBountyError(null);
-      } catch (error) {
-        if (!isMounted) return;
-
-        const message =
-          error instanceof Error ? error.message : "Gagal memuat bounty supplier.";
-
-        setBounties([]);
-        setBountyError(message);
-        toast.error(message);
-      } finally {
-        if (isMounted) setIsLoadingBounties(false);
+      if (isMounted) {
+        await loadBounties(false);
       }
     }
 
@@ -425,21 +511,31 @@ export default function SupplierBountiesWorkspace() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, deadlineFilter, statusFilter]);
+  }, [search, deadlineFilter, statusFilter, participationFilter]);
+
+  const bountiesWithBid = useMemo(() => {
+    return bounties.map((bounty, index) => ({
+      bounty,
+      absoluteIndex: index,
+      bid: getSubmittedBid(bounty, bidLookup, index),
+    }));
+  }, [bidLookup, bounties]);
 
   const filteredBounties = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    return bounties.filter((bounty, index) => {
+    return bountiesWithBid.filter(({ bounty, bid, absoluteIndex }) => {
       const matchesSearch =
-        !keyword || getSearchHaystack(bounty, index).includes(keyword);
+        !keyword || getSearchHaystack(bounty, absoluteIndex).includes(keyword);
 
-      const matchesDeadline = matchDeadlineFilter(bounty, deadlineFilter);
-      const matchesStatus = matchStatusFilter(bounty, statusFilter);
-
-      return matchesSearch && matchesDeadline && matchesStatus;
+      return (
+        matchesSearch &&
+        matchDeadlineFilter(bounty, deadlineFilter) &&
+        matchStatusFilter(bounty, statusFilter) &&
+        matchParticipationFilter(bid, participationFilter)
+      );
     });
-  }, [bounties, search, deadlineFilter, statusFilter]);
+  }, [bountiesWithBid, deadlineFilter, participationFilter, search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBounties.length / PAGE_SIZE));
 
@@ -454,20 +550,15 @@ export default function SupplierBountiesWorkspace() {
 
   const showingStart =
     filteredBounties.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-
   const showingEnd = Math.min(page * PAGE_SIZE, filteredBounties.length);
 
   const stats = useMemo(() => {
     const total = bounties.length;
-    const open = bounties.filter(isOpenBounty).length;
-    const urgent = bounties.filter(isUrgentBounty).length;
+    const published = bounties.filter((bounty) => matchStatusFilter(bounty, "published")).length;
+    const submitted = bountiesWithBid.filter(({ bid }) => Boolean(bid)).length;
 
-    const totalItems = bounties.reduce((acc, bounty) => {
-      return acc + getBountyItems(bounty).length;
-    }, 0);
-
-    return { total, open, urgent, totalItems };
-  }, [bounties]);
+    return { total, published, submitted };
+  }, [bounties, bountiesWithBid]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -487,11 +578,11 @@ export default function SupplierBountiesWorkspace() {
   const headerActions = (
     <button
       type="button"
-      onClick={loadBounties}
+      onClick={() => loadBounties(true)}
       disabled={isLoadingBounties}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-high px-5 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-highest disabled:opacity-70 sm:w-auto"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-high px-5 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container-highest disabled:cursor-wait disabled:opacity-70 sm:w-auto"
     >
-      <RefreshCw className="h-4 w-4" />
+      <RefreshCw className={`h-4 w-4 ${isLoadingBounties ? "animate-spin" : ""}`} />
       Refresh Bounties
     </button>
   );
@@ -499,14 +590,14 @@ export default function SupplierBountiesWorkspace() {
   return (
     <SupplierShell
       title="The Precision Harvest"
-      description="Supplier procurement portal untuk melihat bounty aktif dan peluang permintaan bahan pangan."
+      description="Supplier procurement portal untuk melihat bounty aktif dan mengajukan bid bahan pangan."
       actions={headerActions}
       onLogout={handleLogout}
       isLoggingOut={isLoggingOut}
       user={user}
     >
       {isLoadingUser || isLoadingBounties ? null : (
-        <div className="w-full">
+        <div className="w-full pb-6">
           <section className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0">
               <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60">
@@ -518,15 +609,15 @@ export default function SupplierBountiesWorkspace() {
               </h2>
 
               <p className="mt-3 max-w-2xl text-base leading-8 text-secondary md:text-lg">
-                Explore open procurement requests from verified regional buyers and
-                fulfill high-volume fresh produce orders.
+                Explore open procurement requests from verified regional distributors
+                and fulfill high-volume fresh produce orders.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-3 rounded-2xl bg-surface-container-lowest p-3 shadow-sm">
               <Metric label="Total" value={stats.total} />
-              <Metric label="Open" value={stats.open} />
-              <Metric label="Urgent" value={stats.urgent} />
+              <Metric label="Published" value={stats.published} />
+              <Metric label="Submitted" value={stats.submitted} />
             </div>
           </section>
 
@@ -546,71 +637,72 @@ export default function SupplierBountiesWorkspace() {
             </section>
           ) : null}
 
+          {bidError ? (
+            <section className="mb-8 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-secondary" />
+                <div className="min-w-0">
+                  <p className="font-bold text-on-surface">Data partisipasi bid belum terbaca</p>
+                  <p className="mt-1 break-words text-sm text-on-surface-variant">
+                    Halaman bounty tetap ditampilkan. Filter Submitted/Not Submitted akan akurat setelah endpoint <code className="rounded bg-surface-container px-1 py-0.5">/api/supplier/bids</code> berhasil mengirim data. Detail: {bidError}
+                  </p>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
           <section className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-4">
-            <div className="relative md:col-span-2">
+            <div className="relative">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-outline" />
               <input
                 type="text"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search bounties by ID, client, product..."
-                className="w-full rounded-xl border border-transparent bg-surface-container-lowest py-4 pl-12 pr-4 text-sm text-on-surface shadow-sm outline-none transition focus:border-primary/20 focus:ring-2 focus:ring-primary/20"
+                placeholder="Search by code or title..."
+                className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-lowest py-3 pl-12 pr-4 text-sm text-on-surface shadow-sm outline-none transition placeholder:text-outline focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
-            <div className="flex items-center rounded-xl bg-surface-container-lowest p-1 shadow-sm">
+            <div className="flex items-center rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-1 shadow-sm">
               <select
                 value={deadlineFilter}
-                onChange={(event) =>
-                  setDeadlineFilter(event.target.value as DeadlineFilter)
-                }
-                className="w-full rounded-lg border-none bg-transparent px-4 py-3 text-sm font-semibold text-on-surface outline-none focus:ring-0"
+                onChange={(event) => setDeadlineFilter(event.target.value as DeadlineFilter)}
+                className="w-full rounded-lg border-none bg-transparent px-3 py-2 text-sm font-semibold text-on-surface outline-none focus:ring-0"
               >
                 <option value="all">Deadline: All Time</option>
-                <option value="today">Closing Today</option>
-                <option value="week">Within 7 Days</option>
-                <option value="extended">Extended Bounties</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
               </select>
             </div>
 
-            <div className="flex items-center rounded-xl bg-surface-container-lowest p-1 shadow-sm">
+            <div className="flex items-center rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-1 shadow-sm">
               <select
                 value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as StatusFilter)
-                }
-                className="w-full rounded-lg border-none bg-transparent px-4 py-3 text-sm font-semibold text-on-surface outline-none focus:ring-0"
+                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                className="w-full rounded-lg border-none bg-transparent px-3 py-2 text-sm font-semibold text-on-surface outline-none focus:ring-0"
               >
-                <option value="open">Status: Open</option>
-                <option value="urgent">Urgent Only</option>
-                <option value="verified">Verified Only</option>
+                <option value="published">Bounty Status: Published</option>
+                <option value="closed">Closed</option>
                 <option value="all">All Status</option>
+              </select>
+            </div>
+
+            <div className="flex items-center rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-1 shadow-sm">
+              <select
+                value={participationFilter}
+                onChange={(event) => setParticipationFilter(event.target.value as ParticipationFilter)}
+                className="w-full rounded-lg border-none bg-transparent px-3 py-2 text-sm font-semibold text-on-surface outline-none focus:ring-0"
+              >
+                <option value="all">Participation: All</option>
+                <option value="submitted">Submitted</option>
+                <option value="not_submitted">Not Submitted</option>
               </select>
             </div>
           </section>
 
-          <section className="space-y-3">
-            <div className="hidden grid-cols-12 px-6 py-3 lg:grid">
-              <div className="col-span-2 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-                Bounty Code
-              </div>
-              <div className="col-span-3 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-                Bounty Title & Client
-              </div>
-              <div className="col-span-2 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-                Items
-              </div>
-              <div className="col-span-2 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-                Deadline
-              </div>
-              <div className="col-span-2 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-                Status
-              </div>
-              <div className="col-span-1" />
-            </div>
-
+          <section className="space-y-4">
             {pagedBounties.length === 0 ? (
-              <div className="rounded-2xl bg-surface-container-lowest p-8 text-center shadow-sm">
+              <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-8 text-center shadow-sm">
                 <Package2 className="mx-auto h-9 w-9 text-on-surface-variant" />
                 <p className="mt-4 font-bold text-on-surface">Bounty belum tersedia</p>
                 <p className="mt-1 text-sm text-on-surface-variant">
@@ -618,109 +710,166 @@ export default function SupplierBountiesWorkspace() {
                 </p>
               </div>
             ) : (
-              pagedBounties.map((bounty, index) => {
-                const absoluteIndex = (page - 1) * PAGE_SIZE + index;
+              pagedBounties.map(({ bounty, bid, absoluteIndex }) => {
                 const id = getBountyId(bounty, absoluteIndex);
+                const detailHref = `/supplier/bounties/${encodeURIComponent(id)}`;
                 const items = getBountyItems(bounty);
                 const statusLabel = getDisplayStatus(bounty);
-                const deadline = getDeadline(bounty);
-                const primaryItem = getPrimaryItemLabel(items);
+                const deadline = getCurrentDeadline(bounty);
+                const originalDeadline = getOriginalDeadline(bounty);
+                const isExtended = isDeadlineExtended(bounty);
+                const isOverdue = isDeadlinePassed(deadline);
+                const visibleItems = items.slice(0, 4);
+                const hiddenItemCount = Math.max(0, items.length - visibleItems.length);
+                const bidStatusLabel = getBidStatusLabel(bid);
 
                 return (
-                  <Link
+                  <article
                     key={`${id}-${absoluteIndex}`}
-                    href={`/supplier/bounties/${encodeURIComponent(id)}`}
-                    className="group block rounded-xl border border-transparent bg-surface-container-lowest px-5 py-5 shadow-sm transition-all hover:border-outline-variant/20 hover:bg-surface-container-low lg:grid lg:grid-cols-12 lg:items-center lg:px-6"
+                    className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm transition-colors hover:border-outline-variant/60 sm:p-6"
                   >
-                    <div className="lg:col-span-2">
-                      <span className="inline-flex rounded-md bg-primary/5 px-2 py-1 font-mono text-xs font-bold text-primary">
-                        {getBountyCode(bounty, absoluteIndex)}
-                      </span>
-                    </div>
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-primary/10 px-2.5 py-1 font-mono text-xs font-bold text-primary">
+                            {getBountyCode(bounty, absoluteIndex)}
+                          </span>
 
-                    <div className="mt-4 min-w-0 lg:col-span-3 lg:mt-0">
-                      <h4 className="break-words text-sm font-bold text-on-surface">
-                        {getBountyTitle(bounty)}
-                      </h4>
-                      <p className="mt-1 break-words text-xs text-secondary">
-                        {getBountyClient(bounty)}
-                      </p>
-                    </div>
+                          <span
+                            className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(statusLabel)}`}
+                          >
+                            {statusLabel}
+                          </span>
 
-                    <div className="mt-4 flex items-center gap-2 lg:col-span-2 lg:mt-0">
-                      <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface-container-high px-3 py-1 text-[11px] font-bold text-secondary">
-                        <Package2 className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{primaryItem}</span>
+                          <span
+                            className={
+                              bid
+                                ? "inline-flex items-center gap-1 rounded-md bg-secondary-container px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-on-secondary-container"
+                                : "inline-flex items-center gap-1 rounded-md bg-surface-container-high px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant"
+                            }
+                          >
+                            {bid ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                            {bidStatusLabel}
+                          </span>
+                        </div>
+
+                        <h3 className="break-words font-headline text-xl font-bold text-on-surface">
+                          {getBountyTitle(bounty)}
+                        </h3>
+
+                        <p className="mt-1 break-words text-sm font-semibold text-secondary">
+                          {getBountyClient(bounty)}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 text-left md:text-right">
+                        {isExtended && originalDeadline ? (
+                          <p className="text-xs font-semibold text-error line-through decoration-error/50">
+                            {formatDateLabel(originalDeadline)}
+                          </p>
+                        ) : null}
+
+                        <p
+                          className={
+                            isOverdue
+                              ? "mt-0.5 flex items-center gap-1.5 text-sm font-bold text-error md:justify-end"
+                              : "mt-0.5 flex items-center gap-1.5 text-sm font-bold text-on-surface md:justify-end"
+                          }
+                        >
+                          <Clock3 className="h-4 w-4 text-tertiary" />
+                          {formatDateLabel(deadline)}
+                          {isExtended ? " (Extended)" : ""}
+                        </p>
+
+                        <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant md:justify-end">
+                          <CalendarDays className="h-3.5 w-3.5" />
+                          {getRemainingLabel(deadline, getRawStatus(bounty))}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="mt-4 lg:col-span-2 lg:mt-0">
-                      <span
-                        className={
-                          statusLabel === "Urgent"
-                            ? "text-sm font-semibold text-tertiary"
-                            : "text-sm font-semibold text-on-surface"
-                        }
+                    <p className="mt-4 max-w-3xl break-words text-sm leading-6 text-on-surface-variant">
+                      {getBountyDescription(bounty)}
+                    </p>
+
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {visibleItems.length === 0 ? (
+                        <div className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm font-semibold text-on-surface-variant">
+                          <Package2 className="h-4 w-4 text-primary" />
+                          Item belum tersedia
+                        </div>
+                      ) : (
+                        visibleItems.map((item, itemIndex) => {
+                          const note = getItemNote(item);
+
+                          return (
+                            <div
+                              key={`${getItemName(item, itemIndex)}-${itemIndex}`}
+                              className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-sm font-semibold text-on-surface-variant"
+                            >
+                              <Leaf className="h-4 w-4 shrink-0 text-primary" />
+                              <span className="break-words">{getItemName(item, itemIndex)}</span>
+                              <span className="font-bold text-on-surface">{getItemQty(item)}</span>
+                              {note ? (
+                                <span className="rounded-md bg-surface-container px-2 py-0.5 text-xs font-medium italic text-secondary">
+                                  Note: {note}
+                                </span>
+                              ) : null}
+                            </div>
+                          );
+                        })
+                      )}
+
+                      {hiddenItemCount > 0 ? (
+                        <span className="inline-flex items-center rounded-xl bg-surface-container px-3 py-2 text-sm font-bold text-secondary">
+                          +{hiddenItemCount} item lainnya
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-6 flex flex-col gap-3 border-t border-outline-variant/20 pt-5 sm:flex-row sm:justify-end">
+                      <Link
+                        href={detailHref}
+                        className="inline-flex items-center justify-center rounded-xl border border-primary/20 px-5 py-2.5 text-sm font-bold text-primary transition hover:bg-primary/5"
                       >
-                        {getRemainingLabel(deadline, resolveStatus(bounty))}
-                      </span>
+                        View Detail
+                      </Link>
 
-                      <div className="mt-1 flex items-center gap-1 text-[11px] text-on-surface-variant lg:hidden">
-                        <CalendarDays className="h-3.5 w-3.5" />
-                        {formatDateLabel(deadline)}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 lg:col-span-2 lg:mt-0">
-                      <span
-                        className={`inline-flex w-fit items-center gap-1 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(
-                          statusLabel
-                        )}`}
+                      <Link
+                        href={detailHref}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary/90"
                       >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${getStatusDotClass(
-                            statusLabel
-                          )}`}
-                        />
-                        {statusLabel}
-                      </span>
+                        {bid ? "View My Bid" : "Submit Bid"}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
                     </div>
-
-                    <div className="mt-4 flex justify-end lg:col-span-1 lg:mt-0">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full transition-colors group-hover:bg-primary group-hover:text-white">
-                        <ArrowRight className="h-5 w-5" />
-                      </span>
-                    </div>
-                  </Link>
+                  </article>
                 );
               })
             )}
           </section>
 
-          <section className="relative mt-12 overflow-hidden rounded-[2rem] bg-on-surface p-8 text-surface shadow-sm">
+          <section className="relative mt-12 overflow-hidden rounded-[2rem] bg-on-surface p-7 text-surface shadow-sm md:p-8">
             <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-primary/20 blur-[100px]" />
             <div className="relative z-10 grid gap-8 md:grid-cols-[minmax(0,1fr)_320px] md:items-center">
               <div className="min-w-0">
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Curator&apos;s Choice
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Supplier Bid Control
                 </div>
 
-                <h3 className="font-headline text-3xl font-bold">
-                  Premium Seasonal Harvest
-                </h3>
+                <h3 className="font-headline text-3xl font-bold">Prioritaskan bounty yang paling siap dipenuhi</h3>
 
                 <p className="mt-4 max-w-xl text-base leading-8 text-surface/70 md:text-lg">
-                  Prioritaskan bounty dengan deadline dekat dan item bernilai tinggi.
-                  Pastikan data supplier serta kesiapan panen selalu terupdate.
+                  Gunakan filter participation untuk memisahkan bounty yang sudah kamu ajukan bid dan bounty yang masih perlu ditindaklanjuti.
                 </p>
 
                 <button
                   type="button"
-                  onClick={() => setStatusFilter("urgent")}
+                  onClick={() => setParticipationFilter("not_submitted")}
                   className="mt-6 rounded-xl bg-primary-container px-6 py-3 text-sm font-bold text-on-primary-container transition hover:scale-[1.02]"
                 >
-                  View Priority Bounties
+                  View Not Submitted
                 </button>
               </div>
 
@@ -729,14 +878,14 @@ export default function SupplierBountiesWorkspace() {
                 <div className="absolute inset-x-6 bottom-6 rounded-2xl border border-white/10 bg-white/10 p-5 backdrop-blur-md">
                   <div className="flex items-center gap-3">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
-                      <Clock3 className="h-6 w-6" />
+                      <CheckCircle2 className="h-6 w-6" />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-white">
-                        {stats.urgent} urgent bounties
+                        {stats.submitted} submitted bids
                       </p>
                       <p className="mt-1 text-xs text-white/70">
-                        Closing soon from available requests.
+                        From {stats.total} available bounty records.
                       </p>
                     </div>
                   </div>
@@ -745,7 +894,7 @@ export default function SupplierBountiesWorkspace() {
             </div>
           </section>
 
-          <footer className="mt-12 flex flex-col gap-4 border-t border-outline-variant/10 pt-8 sm:flex-row sm:items-center sm:justify-between">
+          <footer className="mt-10 flex flex-col gap-4 border-t border-outline-variant/20 pt-8 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm font-semibold text-secondary">
               Showing {showingStart}-{showingEnd} of {filteredBounties.length} Bounties
             </span>
@@ -756,11 +905,12 @@ export default function SupplierBountiesWorkspace() {
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
                 disabled={page <= 1}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high text-on-surface transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
 
-              {Array.from({ length: Math.min(totalPages, 3) }).map((_, index) => {
+              {Array.from({ length: Math.min(totalPages, 5) }).map((_, index) => {
                 const pageNumber = index + 1;
 
                 return (
@@ -773,16 +923,15 @@ export default function SupplierBountiesWorkspace() {
                         ? "flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-white"
                         : "flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-low text-sm font-bold text-secondary transition hover:bg-surface-container-high"
                     }
+                    aria-label={`Page ${pageNumber}`}
                   >
                     {pageNumber}
                   </button>
                 );
               })}
 
-              {totalPages > 3 ? (
-                <span className="flex h-10 items-center px-2 text-sm font-bold text-secondary">
-                  ...
-                </span>
+              {totalPages > 5 ? (
+                <span className="flex h-10 items-center px-2 text-sm font-bold text-secondary">...</span>
               ) : null}
 
               <button
@@ -790,6 +939,7 @@ export default function SupplierBountiesWorkspace() {
                 onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                 disabled={page >= totalPages}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high text-on-surface transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -804,7 +954,7 @@ export default function SupplierBountiesWorkspace() {
 function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="min-w-0 rounded-xl bg-surface-container-low px-4 py-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+      <p className="truncate text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
         {label}
       </p>
       <p className="mt-1 font-headline text-2xl font-extrabold text-on-surface">

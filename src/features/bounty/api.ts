@@ -5,12 +5,17 @@ import type {
   AdminBountyRecord,
   CreateBountyPayload,
   CreateBountyResponse,
+  SupplierBidRecord,
   SupplierBountyRecord,
+  SupplierBidPayload,
   UpdateBountyPayload,
   UpdateBountyResponse,
 } from "@/features/bounty/types";
 
 export type BountyStatus = "draft" | "published" | "closed" | "cancelled" | string;
+
+const SUPPLIER_BIDS_PATH =
+  process.env.NEXT_PUBLIC_SUPPLIER_BIDS_PATH || "/api/supplier/bids";
 
 function extractApiError(error: unknown): never {
   if (axios.isAxiosError(error)) {
@@ -41,7 +46,16 @@ function findFirstArray<TRecord>(value: unknown): TRecord[] {
   if (!value || typeof value !== "object") return [];
 
   const record = value as Record<string, unknown>;
-  const directKeys = ["data", "bounties", "items", "results", "records", "list", "rows"];
+  const directKeys = [
+    "data",
+    "bounties",
+    "bids",
+    "items",
+    "results",
+    "records",
+    "list",
+    "rows",
+  ];
 
   for (const key of directKeys) {
     const candidate = record[key];
@@ -75,7 +89,7 @@ function findFirstObject<TRecord>(value: unknown): TRecord | null {
   }
 
   const record = value as Record<string, unknown>;
-  const directKeys = ["data", "bounty", "item", "record", "result"];
+  const directKeys = ["data", "bounty", "bid", "item", "record", "result"];
 
   for (const key of directKeys) {
     const candidate = record[key];
@@ -223,3 +237,48 @@ export async function getSupplierBountyDetail(id: number | string) {
   }
 }
 
+export async function getSupplierBids() {
+  try {
+    const { data } = await apiClient.get(SUPPLIER_BIDS_PATH);
+    return normalizeBountyList<SupplierBidRecord>(data);
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
+export async function getSupplierBountyBid(id: number | string) {
+  try {
+    const safeId = encodeURIComponent(String(id));
+    const { data } = await apiClient.get(`${env.SUPPLIER_BOUNTIES_PATH}/${safeId}/bid`);
+    return normalizeBountyDetail<SupplierBidRecord>(data);
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
+export async function submitSupplierBountyBid(
+  id: number | string,
+  payload: SupplierBidPayload
+) {
+  try {
+    const safeId = encodeURIComponent(String(id));
+    const { data } = await apiClient.post(
+      `${env.SUPPLIER_BOUNTIES_PATH}/${safeId}/bid`,
+      payload
+    );
+
+    return data;
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
+export async function withdrawSupplierBountyBid(id: number | string) {
+  try {
+    const safeId = encodeURIComponent(String(id));
+    const { data } = await apiClient.delete(`${env.SUPPLIER_BOUNTIES_PATH}/${safeId}/bid`);
+    return data;
+  } catch (error) {
+    extractApiError(error);
+  }
+}

@@ -53,15 +53,67 @@ export type BountyRecord = {
   notes?: string | null;
   deadline_at?: string | null;
   deadline?: string | null;
+  original_deadline_at?: string | null;
+  previous_deadline_at?: string | null;
+  extended_deadline_at?: string | null;
   status?: string | null;
   approval_status?: string | null;
   publication_status?: string | null;
   items?: BountyItemRecord[];
   bounty_items?: BountyItemRecord[];
+  bid?: SupplierBidRecord | null;
+  my_bid?: SupplierBidRecord | null;
+  supplier_bid?: SupplierBidRecord | null;
+  has_bid?: boolean | number | string | null;
+  is_bid_submitted?: boolean | number | string | null;
   created_by?: unknown;
   created_at?: string | null;
   updated_at?: string | null;
   [key: string]: unknown;
+};
+
+export type SupplierBidItemRecord = {
+  id?: number | string;
+  bounty_item_id?: number | string | null;
+  bounty_item?: BountyItemRecord | null;
+  grade?: string | null;
+  estimasi_harga?: number | string | null;
+  estimated_price?: number | string | null;
+  price?: number | string | null;
+  estimasi_kuantitas?: number | string | null;
+  estimated_quantity?: number | string | null;
+  quantity?: number | string | null;
+  catatan?: string | null;
+  notes?: string | null;
+  [key: string]: unknown;
+};
+
+export type SupplierBidRecord = {
+  id?: number | string;
+  bounty_id?: number | string | null;
+  bountyId?: number | string | null;
+  bounty?: BountyRecord | null;
+  status?: string | null;
+  notes?: string | null;
+  items?: SupplierBidItemRecord[];
+  bid_items?: SupplierBidItemRecord[];
+  created_at?: string | null;
+  updated_at?: string | null;
+  submitted_at?: string | null;
+  [key: string]: unknown;
+};
+
+export type SupplierBidItemPayload = {
+  bounty_item_id: number | string;
+  grade: string;
+  estimasi_harga: number;
+  estimasi_kuantitas: number;
+  catatan?: string;
+};
+
+export type SupplierBidPayload = {
+  notes?: string;
+  items: SupplierBidItemPayload[];
 };
 
 export type AdminBountyRecord = BountyRecord;

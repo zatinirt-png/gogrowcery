@@ -159,6 +159,12 @@ function getRoleNav(role?: string | null): NavItem[] {
         icon: ClipboardList,
         match: (pathname) => pathname.startsWith("/supplier/bounties"),
       },
+      {
+        label: "My Bid",
+        href: "/supplier/bids",
+        icon: MessageSquareQuote,
+        match: (pathname) => pathname.startsWith("/supplier/bids"),
+      },
     ];
   }
 
