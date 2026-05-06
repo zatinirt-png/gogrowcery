@@ -1419,22 +1419,7 @@ function SubmitBidView({
               />
             </ul>
 
-            <div className="mt-8 border-t border-outline-variant/20 pt-8">
-              <p className="mb-4 text-xs leading-relaxed text-secondary">
-                Bid kamu{" "}
-                <span className="font-bold text-on-surface">
-                  {completeness.score}% complete
-                </span>
-                . Catatan tambahan membantu admin membaca kualitas proposal.
-              </p>
-
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-highest">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${completeness.score}%` }}
-                />
-              </div>
-            </div>
+            
           </section>
 
           <BidSummaryCard summary={summary} />

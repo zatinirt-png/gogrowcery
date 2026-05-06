@@ -32,6 +32,7 @@ export default function SupplierShell({
       user={user}
       onLogout={onLogout}
       isLoggingOut={isLoggingOut}
+      hidePublicNav
     >
       <div className="mx-auto max-w-7xl">{children}</div>
     </UniversalAppShell>

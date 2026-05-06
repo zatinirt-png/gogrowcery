@@ -54,6 +54,7 @@ type UniversalAppShellProps = {
   showHeader?: boolean;
   publicCtaHref?: string;
   publicCtaLabel?: string;
+  hidePublicNav?: boolean;
 };
 
 const globalNav: NavItem[] = [
@@ -341,6 +342,7 @@ export default function UniversalAppShell({
   showHeader = true,
   publicCtaHref = "/register",
   publicCtaLabel = "Mulai Sekarang",
+  hidePublicNav = false,
 }: UniversalAppShellProps) {
   const pathname = usePathname();
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
@@ -352,11 +354,11 @@ export default function UniversalAppShell({
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileTriggerRef = useRef<HTMLButtonElement | null>(null);
 
-  const roleNav = useMemo(() => getRoleNav(role), [role]);
-  const roleLabel = getRoleLabel(role);
-  const normalizedRole = (role || "").toLowerCase();
-  const isAdmin = normalizedRole === "admin";
-  const isLoggedIn = Boolean(role);
+  const normalizedRole = (role || user?.role || "").toLowerCase();
+  const roleNav = useMemo(() => getRoleNav(normalizedRole), [normalizedRole]);
+  const roleLabel = getRoleLabel(normalizedRole);
+  const isLoggedIn = Boolean(normalizedRole);
+  const shouldShowPublicNav = !hidePublicNav && !isLoggedIn;
   const profileName = user?.name?.trim() || roleLabel;
   const profileEmail =
     user?.email?.trim() || (isLoggedIn ? `${roleLabel} aktif` : "Pengunjung");
@@ -449,13 +451,13 @@ export default function UniversalAppShell({
       </div>
 
       <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-4 py-6">
-        {!isAdmin ? (
+        {shouldShowPublicNav ? (
           <NavSection items={globalNav} pathname={pathname} onNavigate={closeMenus} />
         ) : null}
 
         {roleNav.length > 0 ? (
           <NavSection
-            title={isAdmin ? undefined : "Menu"}
+            title="Menu"
             items={roleNav}
             pathname={pathname}
             onNavigate={closeMenus}

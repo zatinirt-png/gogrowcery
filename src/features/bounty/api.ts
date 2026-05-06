@@ -181,6 +181,67 @@ export async function getAdminBountyBids(id: number | string) {
   }
 }
 
+export async function getAdminBountyBidDetail(
+  bountyId: number | string,
+  bidId: number | string
+) {
+  try {
+    const safeBountyId = encodeURIComponent(String(bountyId));
+    const safeBidId = encodeURIComponent(String(bidId));
+
+    const { data } = await apiClient.get(
+      `${env.ADMIN_BOUNTIES_PATH}/${safeBountyId}/bids/${safeBidId}`
+    );
+
+    return normalizeBountyDetail<Record<string, unknown>>(data);
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
+export type AdminBidItemApprovalStatus = "approved" | "rejected";
+
+export type AdminBidItemApprovalPayload = {
+  status: AdminBidItemApprovalStatus;
+  catatan?: string;
+  proof_photo?: File | null;
+};
+
+
+
+export async function approveAdminBountyBidItem(
+  bountyId: number | string,
+  bidId: number | string,
+  itemId: number | string,
+  payload: AdminBidItemApprovalPayload
+) {
+  try {
+    const safeBountyId = encodeURIComponent(String(bountyId));
+    const safeBidId = encodeURIComponent(String(bidId));
+    const safeItemId = encodeURIComponent(String(itemId));
+
+    const formData = new FormData();
+    formData.append("status", payload.status);
+
+    if (payload.catatan?.trim()) {
+      formData.append("catatan", payload.catatan.trim());
+    }
+
+    if (payload.proof_photo) {
+      formData.append("proof_photo", payload.proof_photo);
+    }
+
+    const { data } = await apiClient.post(
+      `${env.ADMIN_BOUNTIES_PATH}/${safeBountyId}/bids/${safeBidId}/items/${safeItemId}/approve`,
+      formData
+    );
+
+    return data;
+  } catch (error) {
+    extractApiError(error);
+  }
+}
+
 export type AdminBountyUpdatePayload = {
   client_name: string;
   title: string;
