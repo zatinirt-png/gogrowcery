@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeBountyDirectorySync } from "@/features/bounty/bounty-directory-sync";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -398,29 +399,40 @@ export default function SupplierBidsWorkspace() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("any");
   const [page, setPage] = useState(1);
 
-  const loadBids = async (showToast = false) => {
+  const loadBids = async (
+  showToast = false,
+  options: { silent?: boolean } = {}
+) => {
+  const silent = Boolean(options.silent);
+
+  if (!silent) {
     if (showToast) setIsRefreshing(true);
     else setIsLoadingBids(true);
+  }
 
-    try {
-      const response = await getSupplierBids();
+  try {
+    const response = await getSupplierBids();
 
-      setBids(response);
-      setErrorMessage(null);
+    setBids(response);
+    setErrorMessage(null);
 
-      if (showToast) toast.success("Data My Bid diperbarui.");
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Gagal memuat data bid supplier.";
+    if (showToast) toast.success("Data My Bid diperbarui.");
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Gagal memuat data bid supplier.";
 
+    if (!silent) {
       setBids([]);
       setErrorMessage(message);
       toast.error(message);
-    } finally {
+    }
+  } finally {
+    if (!silent) {
       if (showToast) setIsRefreshing(false);
       else setIsLoadingBids(false);
     }
-  };
+  }
+};
 
   useEffect(() => {
     let isMounted = true;
@@ -454,6 +466,45 @@ export default function SupplierBidsWorkspace() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
+
+  useEffect(() => {
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+  let debounceId: ReturnType<typeof setTimeout> | null = null;
+  let isRunning = false;
+
+  const refreshSilently = async () => {
+    if (isRunning) return;
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+
+    isRunning = true;
+
+    try {
+      await loadBids(false, { silent: true });
+    } finally {
+      isRunning = false;
+    }
+  };
+
+  const scheduleRefresh = () => {
+    if (debounceId) clearTimeout(debounceId);
+    debounceId = setTimeout(() => {
+      void refreshSilently();
+    }, 250);
+  };
+
+  const unsubscribe = subscribeBountyDirectorySync(scheduleRefresh);
+
+  intervalId = setInterval(() => {
+    void refreshSilently();
+  }, 12000);
+
+  return () => {
+    unsubscribe();
+    if (intervalId) clearInterval(intervalId);
+    if (debounceId) clearTimeout(debounceId);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   useEffect(() => {
     setPage(1);

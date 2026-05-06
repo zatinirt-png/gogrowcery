@@ -5,6 +5,13 @@ import { startGlobalLoading } from "@/lib/global-loading";
 
 type LoadingAwareConfig = InternalAxiosRequestConfig & {
   __stopGlobalLoading?: () => void;
+  skipGlobalLoading?: boolean;
+  __skipGlobalLoading?: boolean;
+};
+
+export type ApiRequestConfig = Partial<LoadingAwareConfig> & {
+  params?: Record<string, unknown>;
+  headers?: Record<string, unknown>;
 };
 
 export const apiClient = axios.create({
@@ -18,7 +25,12 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: LoadingAwareConfig) => {
     if (typeof window !== "undefined") {
-      config.__stopGlobalLoading = startGlobalLoading("Memuat data...");
+      const shouldSkipGlobalLoading =
+        config.skipGlobalLoading === true || config.__skipGlobalLoading === true;
+
+      if (!shouldSkipGlobalLoading) {
+        config.__stopGlobalLoading = startGlobalLoading("Memuat data...");
+      }
 
       const token = getAccessToken();
 

@@ -142,79 +142,65 @@ export default function BountyCreateForm() {
     });
   };
 
-  const buildPayload = (values: CreateBountyFormValues) => {
-    return {
-      client_name: values.client_name.trim(),
-      title: values.title.trim(),
-      description: values.description?.trim() || undefined,
-      deadline_at: formatDateTimeLocalToApi(values.deadline_at),
-      items: values.items.map((item) => ({
-        item_name: item.item_name.trim(),
-        target_quantity: Number(item.target_quantity),
-        unit: item.unit.trim(),
-        notes: item.notes?.trim() || undefined,
-      })),
-    };
+ const buildPayload = (values: CreateBountyFormValues) => {
+  return {
+    client_name: values.client_name.trim(),
+    title: values.title.trim(),
+    description: values.description?.trim() || "",
+    deadline_at: formatDateTimeLocalToApi(values.deadline_at),
+    items: values.items.map((item) => ({
+      item_name: item.item_name.trim(),
+      target_quantity: Number(item.target_quantity),
+      unit: item.unit.trim(),
+      ...(item.notes?.trim() ? { notes: item.notes.trim() } : {}),
+    })),
   };
+};
 
   const submitBounty = async (
-    values: CreateBountyFormValues,
-    mode: SubmitMode
-  ) => {
-    setFormError(null);
-    setSubmitMode(mode);
+  values: CreateBountyFormValues,
+  mode: SubmitMode
+) => {
+  setFormError(null);
+  setSubmitMode(mode);
 
-    try {
-      const response = await createBounty(buildPayload(values));
-      const createdBountyId = extractCreatedBountyId(response);
+  try {
+    const payload = buildPayload(values);
+    const response = await createBounty(payload);
+    const createdBountyId = extractCreatedBountyId(response);
 
-      if (createdBountyId) {
-        try {
-          await updateBountyStatus(
-            createdBountyId,
-            mode === "publish" ? "published" : "draft"
-          );
-        } catch (statusError) {
-          const statusMessage =
-            statusError instanceof Error
-              ? statusError.message
-              : mode === "publish"
-                ? "Bounty dibuat, tetapi gagal dipublish."
-                : "Bounty dibuat, tetapi status draft gagal dipastikan.";
-
-          toast.warning(statusMessage);
-        }
-      } else {
-        toast.warning(
-          "ID bounty tidak ditemukan dari response, status belum bisa diubah otomatis."
-        );
-      }
-
-      if (mode === "publish") {
-        toast.success("Bounty berhasil dibuat dan dipublish ke supplier.");
-      } else {
-        toast.success("Bounty berhasil disimpan sebagai draft.");
-      }
+    if (!createdBountyId) {
+      toast.warning(
+        "Bounty berhasil dibuat, tetapi ID bounty tidak terbaca dari response."
+      );
 
       resetForm();
-
-      if (createdBountyId) {
-        router.push(`/admin/bounties/${encodeURIComponent(createdBountyId)}`);
-      } else {
-        router.push("/admin/bounties");
-      }
-
+      router.push("/admin/bounties");
       router.refresh();
-    } catch (error) {
-      applyServerValidationErrors(error);
-
-      const message = getBountyErrorMessage(error);
-      setFormError(message);
-      toast.error(message);
-    } finally {
-      setSubmitMode(null);
+      return;
     }
-  };
+
+    if (mode === "publish") {
+      await updateBountyStatus(createdBountyId, "published");
+      toast.success("Bounty berhasil dibuat dan dipublish ke supplier.");
+    } else {
+      toast.success("Bounty berhasil disimpan sebagai draft.");
+    }
+
+    resetForm();
+
+    router.push(`/admin/bounties/${encodeURIComponent(createdBountyId)}`);
+    router.refresh();
+  } catch (error) {
+    applyServerValidationErrors(error);
+
+    const message = getBountyErrorMessage(error);
+    setFormError(message);
+    toast.error(message);
+  } finally {
+    setSubmitMode(null);
+  }
+};
 
   const isDraftSaving = isSubmitting && submitMode === "draft";
   const isPublishing = isSubmitting && submitMode === "publish";

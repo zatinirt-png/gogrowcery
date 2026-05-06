@@ -1,7 +1,8 @@
 "use client";
 
+import { subscribeBountyDirectorySync } from "@/features/bounty/bounty-directory-sync";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   CalendarDays,
@@ -330,6 +331,8 @@ export default function AdminBountyListView() {
   const [status, setStatus] = useState("All");
   const [bidStatus, setBidStatus] = useState<BidStatusFilter>("all");
   const [page, setPage] = useState(1);
+  const liveRefreshRef = useRef(false);
+  const lastLiveRefreshAtRef = useRef(0);
 
   const rows = useMemo(
     () => bounties.map((record, index) => toAdminBountyRow(record, index)),
@@ -340,30 +343,85 @@ export default function AdminBountyListView() {
     return Array.from(new Set(rows.map((item) => item.status))).sort();
   }, [rows]);
 
-  const loadBounties = async (mode: "initial" | "refresh" = "refresh") => {
-    if (mode === "initial") setIsLoading(true);
-    else setIsRefreshing(true);
+  const loadBounties = useCallback(
+    async (mode: "initial" | "refresh" | "silent" = "refresh") => {
+      if (mode === "silent") {
+        if (liveRefreshRef.current) return;
 
-    try {
-      const response = await getAdminBounties();
-      setBounties(response);
-      setErrorMessage(null);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Gagal memuat data bounty admin.";
+        const now = Date.now();
+        if (now - lastLiveRefreshAtRef.current < 1200) return;
 
-      setBounties([]);
-      setErrorMessage(message);
-      toast.error(message);
-    } finally {
-      if (mode === "initial") setIsLoading(false);
-      else setIsRefreshing(false);
-    }
-  };
+        liveRefreshRef.current = true;
+        lastLiveRefreshAtRef.current = now;
+      }
+
+      if (mode === "initial") setIsLoading(true);
+      if (mode === "refresh") setIsRefreshing(true);
+
+      try {
+        const response = await getAdminBounties();
+
+        setBounties(Array.isArray(response) ? response : []);
+        setErrorMessage(null);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Gagal memuat data bounty admin.";
+
+        if (mode !== "silent") {
+          setBounties([]);
+          setErrorMessage(message);
+          toast.error(message);
+        }
+      } finally {
+        if (mode === "initial") setIsLoading(false);
+        if (mode === "refresh") setIsRefreshing(false);
+        if (mode === "silent") liveRefreshRef.current = false;
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    loadBounties("initial");
-  }, []);
+  void loadBounties("initial");
+}, [loadBounties]);
+
+useEffect(() => {
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+  let debounceId: ReturnType<typeof setTimeout> | null = null;
+
+  const refreshSilently = () => {
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
+
+    void loadBounties("silent");
+  };
+
+  const scheduleRefresh = () => {
+    if (debounceId) clearTimeout(debounceId);
+
+    debounceId = setTimeout(() => {
+      refreshSilently();
+    }, 150);
+  };
+
+  const unsubscribe = subscribeBountyDirectorySync(scheduleRefresh);
+
+  intervalId = setInterval(() => {
+    refreshSilently();
+  }, 3000);
+
+  window.addEventListener("focus", scheduleRefresh);
+
+  return () => {
+    unsubscribe();
+
+    if (intervalId) clearInterval(intervalId);
+    if (debounceId) clearTimeout(debounceId);
+
+    window.removeEventListener("focus", scheduleRefresh);
+  };
+}, [loadBounties]);
 
   useEffect(() => {
     setPage(1);

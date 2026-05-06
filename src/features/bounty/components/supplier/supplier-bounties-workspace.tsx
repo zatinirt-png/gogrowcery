@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeBountyDirectorySync } from "@/features/bounty/bounty-directory-sync";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -435,49 +436,54 @@ export default function SupplierBountiesWorkspace() {
 
   const bidLookup = useMemo(() => createBidLookup(bids), [bids]);
 
-  const loadBounties = async (shouldToast = false) => {
-    setIsLoadingBounties(true);
+  const loadBounties = async (
+  shouldToast = false,
+  options: { silent?: boolean } = {}
+) => {
+  const silent = Boolean(options.silent);
 
-    try {
-      const [bountyResponse, bidResult] = await Promise.allSettled([
-        getSupplierBounties(),
-        getSupplierBids(),
-      ]);
+  if (!silent) setIsLoadingBounties(true);
 
-      if (bountyResponse.status === "fulfilled") {
-        setBounties(bountyResponse.value);
-        setBountyError(null);
-      } else {
-        const message =
-          bountyResponse.reason instanceof Error
-            ? bountyResponse.reason.message
-            : "Gagal memuat bounty supplier.";
+  try {
+    const [bountyResponse, bidResult] = await Promise.allSettled([
+      getSupplierBounties(),
+      getSupplierBids(),
+    ]);
 
-        setBounties([]);
-        setBountyError(message);
-        toast.error(message);
-      }
+    if (bountyResponse.status === "fulfilled") {
+      setBounties(bountyResponse.value);
+      setBountyError(null);
+    } else if (!silent) {
+      const message =
+        bountyResponse.reason instanceof Error
+          ? bountyResponse.reason.message
+          : "Gagal memuat bounty supplier.";
 
-      if (bidResult.status === "fulfilled") {
-        setBids(bidResult.value);
-        setBidError(null);
-      } else {
-        const message =
-          bidResult.reason instanceof Error
-            ? bidResult.reason.message
-            : "Gagal memuat data bid supplier.";
-
-        setBids([]);
-        setBidError(message);
-      }
-
-      if (shouldToast && bountyResponse.status === "fulfilled") {
-        toast.success("Bounty supplier diperbarui.");
-      }
-    } finally {
-      setIsLoadingBounties(false);
+      setBounties([]);
+      setBountyError(message);
+      toast.error(message);
     }
-  };
+
+    if (bidResult.status === "fulfilled") {
+      setBids(bidResult.value);
+      setBidError(null);
+    } else if (!silent) {
+      const message =
+        bidResult.reason instanceof Error
+          ? bidResult.reason.message
+          : "Gagal memuat data bid supplier.";
+
+      setBids([]);
+      setBidError(message);
+    }
+
+    if (shouldToast && bountyResponse.status === "fulfilled") {
+      toast.success("Bounty supplier diperbarui.");
+    }
+  } finally {
+    if (!silent) setIsLoadingBounties(false);
+  }
+};
 
   useEffect(() => {
     let isMounted = true;
@@ -508,6 +514,45 @@ export default function SupplierBountiesWorkspace() {
       isMounted = false;
     };
   }, [router]);
+
+  useEffect(() => {
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+  let debounceId: ReturnType<typeof setTimeout> | null = null;
+  let isRunning = false;
+
+  const refreshSilently = async () => {
+    if (isRunning) return;
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+
+    isRunning = true;
+
+    try {
+      await loadBounties(false, { silent: true });
+    } finally {
+      isRunning = false;
+    }
+  };
+
+  const scheduleRefresh = () => {
+    if (debounceId) clearTimeout(debounceId);
+    debounceId = setTimeout(() => {
+      void refreshSilently();
+    }, 250);
+  };
+
+  const unsubscribe = subscribeBountyDirectorySync(scheduleRefresh);
+
+  intervalId = setInterval(() => {
+    void refreshSilently();
+  }, 12000);
+
+  return () => {
+    unsubscribe();
+    if (intervalId) clearInterval(intervalId);
+    if (debounceId) clearTimeout(debounceId);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   useEffect(() => {
     setPage(1);
